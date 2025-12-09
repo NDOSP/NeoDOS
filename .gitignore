@@ -36,6 +36,13 @@
 *.exe
 *.out
 *.app
+*.img
 
 # debug information files
 *.dwo
+
+# VSCode Files
+.vscode/
+
+# Build Files
+build/
