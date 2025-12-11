@@ -1,0 +1,29 @@
+[
+  {
+    "name": "SystemConfig",
+    "type": "R_NODE",
+    "value": [
+      {
+        "name":"Width",
+        "type":"R_U64",
+        "value":"600"
+      },
+      {
+        "name":"Height",
+        "type":"R_U64",
+        "value":"480"
+      }
+    ]
+  },
+  {
+    "name": "Bootloader",
+    "type": "R_NODE",
+    "value": [
+      {
+        "name":"KernelLocation",
+        "type":"R_STR8",
+        "value":"\\NeoDOS\\KERNEL.ELF"
+      }
+    ]
+  }
+]
