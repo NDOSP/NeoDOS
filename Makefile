@@ -30,7 +30,9 @@ image: boot bios_error
 		mkdir -p $(BUILD_DIR)/mnt; \
 		mount $$LOOP $(BUILD_DIR)/mnt 2>/dev/null; \
 		mkdir -p $(BUILD_DIR)/mnt/EFI/BOOT; \
+		mkdir -p $(BUILD_DIR)/mnt/NEODOS; \
 		cp $(BUILD_DIR)/BOOTX64.EFI $(BUILD_DIR)/mnt/EFI/BOOT/BOOTX64.EFI; \
+		echo "Hi!" > $(BUILD_DIR)/mnt/NEODOS/TEST.TXT; \
 		sync; \
 		umount $(BUILD_DIR)/mnt 2>/dev/null; \
 		losetup -d $$LOOP 2>/dev/null || true; \

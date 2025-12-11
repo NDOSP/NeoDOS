@@ -36,13 +36,11 @@ $(BUILD_DIR)/%.o: $(BOOT_SRC)/uefi/%.c
 
 $(UEFI_EFI): $(UEFI_OBJS)
 	@mkdir -p $(BUILD_DIR)
-	# 1. Linkowanie do ELF z użyciem skryptu dla EFI
 	$(LD) -nostdlib -znocombreloc -shared -Bsymbolic \
           -T /usr/lib/elf_x86_64_efi.lds \
           $(UEFI_CRT0) $(UEFI_OBJS) \
           -L/usr/lib -lgnuefi -lefi \
           -o $(BUILD_DIR)/uefi.elf
-	# 2. Konwersja ELF do PE/EFI
 	objcopy -j .text -j .sdata -j .data -j .dynamic \
 	        -j .dynsym -j .rel -j .rela -j .reloc \
 	        --target=efi-app-x86_64 $(BUILD_DIR)/uefi.elf $@
