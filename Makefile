@@ -41,7 +41,6 @@ image: boot tools bios_error
 		mkdir -p $(BUILD_DIR)/mnt/EFI/BOOT; \
 		mkdir -p $(BUILD_DIR)/mnt/NEODOS; \
 		cp $(BUILD_DIR)/BOOTX64.EFI $(BUILD_DIR)/mnt/EFI/BOOT/BOOTX64.EFI; \
-		echo "Hi!" > $(BUILD_DIR)/mnt/NEODOS/TEST.TXT; \
 		cp $(BUILD_DIR)/OSDATA.NDR $(BUILD_DIR)/mnt/NEODOS/OSDATA.NDR; \
 		sync; \
 		umount $(BUILD_DIR)/mnt 2>/dev/null; \

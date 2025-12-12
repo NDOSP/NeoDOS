@@ -48,5 +48,4 @@ error:  db 0x0D, 0x0A
         db "Please enable UEFI in your BIOS/UEFI settings.", 0x0D, 0x0A, 0x0A
         db "System halted.", 0x0D, 0x0A, 0
 
-times 510 - ($ - $$) db 00
-dw 0xAA55
+times 446 - ($ - $$) db 00
