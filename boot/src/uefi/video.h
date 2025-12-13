@@ -23,6 +23,7 @@ typedef enum {
 
 typedef struct {
     VOID* fbPtr;
+    UINTN fbSize;
     UINT32 fbWidth;
     UINT32 fbHeight;
     UINT32 fbScanlineBytes;
@@ -30,5 +31,6 @@ typedef struct {
 } VIDEO_FRAMEBUFFER;
 
 EFI_STATUS getPreferredResolution(OUT VIDEO_INFO* info);
+EFI_STATUS setVideoMode(VIDEO_INFO vInfo, VIDEO_FRAMEBUFFER* fb);
 
 #endif // VIDEO_BOOT_H

@@ -76,3 +76,41 @@ EFI_STATUS getPreferredResolution(OUT VIDEO_INFO* info) {
     
     return Result;
 }
+
+EFI_STATUS setVideoMode(VIDEO_INFO vInfo, VIDEO_FRAMEBUFFER* fb) {
+    EFI_STATUS Status;
+    EFI_GRAPHICS_OUTPUT_PROTOCOL* gop = NULL;
+    if (vInfo.handle) { Status = uefi_call_wrapper(gBS->HandleProtocol, 3, vInfo.handle, &gEfiGraphicsOutputProtocolGuid, (VOID**)&gop); } 
+    else { Status = LibLocateProtocol(&gEfiGraphicsOutputProtocolGuid, (VOID**)&gop); }
+    if (EFI_ERROR(Status)) return Status;
+
+    
+    for (UINT32 modeId = 0; modeId < gop->Mode->MaxMode; modeId++) {
+        EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *info;
+        UINTN sizeOfInfo;
+        Status = uefi_call_wrapper(gop->QueryMode, 4, gop, modeId, &sizeOfInfo, &info);
+
+        if (vInfo.resolution.height > info->VerticalResolution || vInfo.resolution.width > info->HorizontalResolution) continue;
+        switch (info->PixelFormat) {
+            case PixelBlueGreenRedReserved8BitPerColor:
+            case PixelRedGreenBlueReserved8BitPerColor:
+                break;
+            default:
+                continue;
+        }
+
+        Print(L"INFO: (video) Framebuffer info:\n\tFramebuffer: %lX\n\tResolution: %dx%d\n\tScan line: %d\n\tPixel format: %d\n", gop->Mode->FrameBufferBase, info->HorizontalResolution, info->VerticalResolution, info->PixelsPerScanLine, info->PixelFormat);
+        fb->fbHeight = info->VerticalResolution;
+        fb->fbWidth = info->HorizontalResolution;
+        fb->fbPtr = (VOID*)gop->Mode->FrameBufferBase;
+        fb->fbSize = gop->Mode->FrameBufferSize;
+        fb->fbScanlineBytes = info->PixelsPerScanLine;
+        fb->pixelFormat = (VIDEO_TYPE)info->PixelFormat;
+
+        Status = uefi_call_wrapper(gop->SetMode, 2, gop, modeId);
+        if (EFI_ERROR(Status)) return Status;
+        break;
+    }
+
+    return EFI_SUCCESS;
+}

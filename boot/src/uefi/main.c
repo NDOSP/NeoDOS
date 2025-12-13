@@ -16,7 +16,7 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* Syste
     }
 
     VIDEO_INFO vInfo = {
-        .handle = 0,
+        .handle = NULL,
         .resolution = {
             .height = 0,
             .width = 0,
@@ -31,6 +31,12 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* Syste
     }
 
     Print(L"INFO: (video) Using resolution %dx%d\n", vInfo.resolution.width, vInfo.resolution.height);
+
+    VIDEO_FRAMEBUFFER fb;
+    Status = setVideoMode(vInfo, &fb);
+    if (EFI_ERROR(Status)) return Status;
+
+    for(;;) {}
 
     return EFI_SUCCESS;
 }
