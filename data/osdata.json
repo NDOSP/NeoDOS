@@ -6,12 +6,12 @@
       {
         "name":"Width",
         "type":"R_U64",
-        "value":"600"
+        "value":600
       },
       {
         "name":"Height",
         "type":"R_U64",
-        "value":"480"
+        "value":480
       }
     ]
   },
@@ -21,7 +21,7 @@
     "value": [
       {
         "name":"KernelLocation",
-        "type":"R_STR8",
+        "type":"R_STR16",
         "value":"\\NeoDOS\\KERNEL.ELF"
       }
     ]

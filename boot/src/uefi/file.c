@@ -1,6 +1,6 @@
 #include "file.h"
 
-EFI_STATUS loadFile(IN CHAR16* path, OUT VOID** data) {
+EFI_STATUS loadFile(IN CHAR16* path, OUT VOID** data, OUT UINTN* fileSize) {
     if (data == NULL) {
         Print(L"ERROR: (file) loadFile called with NULL data parameter\n");
         return EFI_INVALID_PARAMETER;
@@ -59,8 +59,8 @@ EFI_STATUS loadFile(IN CHAR16* path, OUT VOID** data) {
     }
 
     EFI_FILE_INFO* fileInfo = (VOID*)fileInfoBuffer;
-    UINTN size = fileInfo->FileSize;
-    Print(L"INFO: (file) File size: %lu bytes\n", size);
+    *fileSize = fileInfo->FileSize;
+    Print(L"INFO: (file) File size: %lu bytes\n", *fileSize);
 
     if (fileInfo->Attribute & EFI_FILE_DIRECTORY) {
         Print(L"ERROR: (file) Is directory: '%s'\n", path);
@@ -70,9 +70,9 @@ EFI_STATUS loadFile(IN CHAR16* path, OUT VOID** data) {
         return EFI_INVALID_PARAMETER;
     }
 
-    *data = AllocatePool(size);
+    *data = AllocatePool(*fileSize);
     if (*data == NULL) {
-        Print(L"ERROR: (file) Failed to allocate %lu bytes for file data\n", size);
+        Print(L"ERROR: (file) Failed to allocate %lu bytes for file data\n", *fileSize);
         FreePool(fileInfoBuffer);
         FreePool(*data);
         fileRoot->Close(fileRoot);
@@ -80,7 +80,7 @@ EFI_STATUS loadFile(IN CHAR16* path, OUT VOID** data) {
         return EFI_OUT_OF_RESOURCES;
     }
 
-    Status = uefi_call_wrapper(file->Read, 3, file, &size, *data);
+    Status = uefi_call_wrapper(file->Read, 3, file, fileSize, *data);
     if (EFI_ERROR(Status)) {
         Print(L"ERROR: (file) Read failed: %r\n", Status);
         FreePool(fileInfoBuffer);
@@ -90,7 +90,7 @@ EFI_STATUS loadFile(IN CHAR16* path, OUT VOID** data) {
         return Status;
     }
 
-    if (size != fileInfo->FileSize) {
+    if (*fileSize != fileInfo->FileSize) {
         Print(L"ERROR: (file) Read file failed\n");
         FreePool(fileInfoBuffer);
         FreePool(*data);

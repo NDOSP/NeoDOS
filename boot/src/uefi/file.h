@@ -4,6 +4,6 @@
 #include <efi.h>
 #include <efilib.h>
 
-EFI_STATUS loadFile(IN CHAR16* path, OUT VOID** data);
+EFI_STATUS loadFile(IN CHAR16* path, OUT VOID** data, OUT UINTN* fileSize);
 
 #endif // FILE_BOOT_H
