@@ -1,10 +1,14 @@
-.PHONY: all boot bios_error image tools clean run
+.PHONY: all boot bios_error image tools clean run kernel
 
 BUILD_DIR := build
 DISK_IMG  := $(BUILD_DIR)/disk.img
 BIOS_ERROR := $(BUILD_DIR)/bioserr.bin
 
 all: boot bios_error image
+
+kernel:
+	$(MAKE) -C kernel
+	cp kernel/build/kernel build/NEOKRN.ELF
 
 boot:
 	$(MAKE) -C boot
@@ -13,7 +17,7 @@ tools:
 	$(MAKE) -C tools
 	cp -r tools/build/* build/
 
-image: boot tools bios_error
+image: kernel boot tools bios_error
 	@mkdir -p $(BUILD_DIR)
 	
 	dd if=/dev/zero of=$(DISK_IMG) bs=1M count=64 status=progress
@@ -42,6 +46,7 @@ image: boot tools bios_error
 		mkdir -p $(BUILD_DIR)/mnt/NEODOS; \
 		cp $(BUILD_DIR)/BOOTX64.EFI $(BUILD_DIR)/mnt/EFI/BOOT/BOOTX64.EFI; \
 		cp $(BUILD_DIR)/OSDATA.NDR $(BUILD_DIR)/mnt/NEODOS/OSDATA.NDR; \
+		cp $(BUILD_DIR)/NEOKRN.ELF $(BUILD_DIR)/mnt/NEODOS/NEOKRN.ELF; \
 		sync; \
 		umount $(BUILD_DIR)/mnt 2>/dev/null; \
 		losetup -d $$LOOP 2>/dev/null || true; \
@@ -50,6 +55,7 @@ image: boot tools bios_error
 
 clean:
 	$(MAKE) -C boot clean
+	$(MAKE) -C kernel clean
 	rm -f $(DISK_IMG) $(BIOS_ERROR)
 	rm -rf $(BUILD_DIR)
 

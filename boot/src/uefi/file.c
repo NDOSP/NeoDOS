@@ -13,8 +13,8 @@ EFI_STATUS loadFile(IN CHAR16* path, OUT VOID** data, OUT UINTN* fileSize) {
         return Status;
     }
 
-    Print(L"INFO: (file) SimpleFileSystemProtocol: 0x%lx\n", SimpleFileSystemProtocol);
-    Print(L"INFO: (file) OpenVolume function: 0x%lx\n", SimpleFileSystemProtocol->OpenVolume);
+    Print(L"INFO: (file) SimpleFileSystemProtocol: 0x%lX\n", SimpleFileSystemProtocol);
+    Print(L"INFO: (file) OpenVolume function: 0x%lX\n", SimpleFileSystemProtocol->OpenVolume);
 
     EFI_FILE_PROTOCOL* fileRoot;
     Status = uefi_call_wrapper(SimpleFileSystemProtocol->OpenVolume, 2, SimpleFileSystemProtocol, &fileRoot);

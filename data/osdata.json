@@ -22,7 +22,7 @@
       {
         "name":"KernelLocation",
         "type":"R_STR16",
-        "value":"\\NeoDOS\\KERNEL.ELF"
+        "value":"\\NeoDOS\\NEOKRN.ELF"
       }
     ]
   }

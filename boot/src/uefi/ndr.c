@@ -432,7 +432,7 @@ EFI_STATUS getConfig(CHAR16* path, ConfigNode** output) {
         pos = dataEnd;
 
         entriesHeaders[i].dataSize = dataEnd - dataStart;
-        Print(L"INFO: (config) Entry %ld: id=%lX, flags=0x%X, data_len=%ld\n", i, entriesHeaders[i].entryId, entriesHeaders[i].flags, entriesHeaders[i].dataSize);
+        Print(L"INFO: (config) Entry %ld: id=0x%lX, flags=0x%X, data_len=%ld\n", i, entriesHeaders[i].entryId, entriesHeaders[i].flags, entriesHeaders[i].dataSize);
     }
 
     ConfigNode* tree = (ConfigNode*)AllocatePool(sizeof(ConfigNode) * (entryCount + 1));
