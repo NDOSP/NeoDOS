@@ -23,6 +23,11 @@
         "name":"KernelLocation",
         "type":"R_STR16",
         "value":"\\NeoDOS\\NEOKRN.ELF"
+      },
+      {
+        "name":"MaxCPU",
+        "type":"R_U64",
+        "value":8
       }
     ]
   }

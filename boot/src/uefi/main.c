@@ -1,6 +1,15 @@
 #include "ndr.h"
 #include "video.h"
 #include "kernel.h"
+#include "memory.h"
+
+typedef struct {
+    UINT64* pml4;
+    UINT64  stackCount;
+    UINT64* stackAddrs;
+    VIDEO_FRAMEBUFFER fb;
+    KERNEL_INFO kInfo;
+} BOOT_INFO;
 
 CHAR16* registryFileAddress = L"\\NEODOS\\OSDATA.NDR";
 
@@ -55,11 +64,24 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* Syste
     Status = loadElf(ConfigNodeGetStr16(&tree[0], (CHAR8*)"Bootloader/KernelLocation", L"\\NEODOS\\KERNEL.BIN"), &kInfo);
     if (EFI_ERROR(Status)) errorHandler(Status);
 
+    UINTN maxCPU = ConfigNodeGetU64(&tree[0], (CHAR8*)"Bootloader/MaxCPU", 4);
+
     VIDEO_FRAMEBUFFER fb;
     Status = setVideoMode(vInfo, &fb);
     if (EFI_ERROR(Status)) errorHandler(Status);
 
-    for(;;) {}
+    UINT64* pml4;
+    Status = initPage(&pml4);
+    if (EFI_ERROR(Status)) errorHandler(Status);
+
+     UINT64* stackAddrs;
+     Status = uefi_call_wrapper(gBS->AllocatePool, 3, EfiLoaderData, maxCPU * sizeof(UINT64*), (VOID**)&stackAddrs);
+     if (EFI_ERROR(Status)) errorHandler(Status);
+
+     Status = mapKernelSpace(pml4, &kInfo, &fb, maxCPU, stackAddrs);
+     if (EFI_ERROR(Status)) errorHandler(Status);
+
+     for(;;) {}
 
     return EFI_SUCCESS;
 }

@@ -1,6 +1,7 @@
 #include "kernel.h"
 #include "file.h"
 #include "memory.h"
+#include "video.h"
 
 EFI_STATUS loadElf(CHAR16* path, KERNEL_INFO* info) {
     UINT8* fileData;
@@ -108,5 +109,75 @@ EFI_STATUS loadElf(CHAR16* path, KERNEL_INFO* info) {
     }
 
     info->entryPoint = ehdr.e_entry;
+    return EFI_SUCCESS;
+}
+
+EFI_STATUS map_core_stacks(UINT64* pml4, UINT64 maxCpu, UINT64* stack_vaddrs) {
+    EFI_STATUS Status;
+    UINT64 coreStackVaddr = (UINT64)(-(INT64)PAGE_SIZE);
+
+    for (UINT64 i = 0; i < maxCpu; i++) {
+        void* coreStack;
+        Status = uefi_call_wrapper(BS->AllocatePages, 4, AllocateAnyPages, EfiLoaderData, 1, &coreStack);
+        if (EFI_ERROR(Status)) return Status;
+
+        Status = addPage(pml4, coreStackVaddr, (UINT64)coreStack, PAGE_PRESENT | PAGE_RW);
+        if (EFI_ERROR(Status)) return Status;
+
+        if (stack_vaddrs) {
+            stack_vaddrs[i] = coreStackVaddr;
+        }
+
+        coreStackVaddr -= PAGE_SIZE;
+    }
+
+    return EFI_SUCCESS;
+}
+
+EFI_STATUS mapKernelSpace(UINT64* pml4, KERNEL_INFO* kInfo, VIDEO_FRAMEBUFFER* fb, UINT64 maxCpu, UINT64* stack_vaddrs) {
+    EFI_STATUS Status;
+    Status = map_core_stacks(pml4, maxCpu, stack_vaddrs);
+    if (EFI_ERROR(Status)) return Status;
+
+    for (UINTN i = 0; i < kInfo->segmentCount; i++) {
+        MAPPING_INFO* mapping = &kInfo->segmentMapping[i];
+        Status = addPage(pml4, mapping->vaddr, mapping->paddr, PAGE_PRESENT | PAGE_RW);
+        if (EFI_ERROR(Status)) return Status;
+    }
+
+    if (fb) {
+        UINT64 fbSize = fb->fbSize;
+        for (UINT64 offset = 0; offset < fbSize; offset += PAGE_SIZE) {
+            Status = addPage(pml4, (UINT64)(fb->fbPtr + offset), (UINT64)(fb->fbPtr + offset), PAGE_PRESENT | PAGE_RW | PAGE_PCD); 
+            if (EFI_ERROR(Status)) return Status;
+        }
+    }
+
+    EFI_MEMORY_DESCRIPTOR* memMap = NULL;
+    UINTN mapSize = 0, mapKey, descSize;
+    UINT32 descVersion;
+    Status = uefi_call_wrapper(BS->GetMemoryMap, 5, &mapSize, memMap, &mapKey, &descSize, &descVersion);
+    if (Status == EFI_BUFFER_TOO_SMALL) {
+        Status = uefi_call_wrapper(BS->AllocatePool, 3, EfiLoaderData, mapSize, (void**)&memMap);
+        if (EFI_ERROR(Status)) return Status;
+        Status = uefi_call_wrapper(BS->GetMemoryMap, 5, &mapSize, memMap, &mapKey, &descSize, &descVersion);
+        if (EFI_ERROR(Status)) return Status;
+    }
+
+    UINTN count = mapSize / descSize;
+    for (UINTN i = 0; i < count; i++) {
+        EFI_MEMORY_DESCRIPTOR* desc = (EFI_MEMORY_DESCRIPTOR*)((UINT8*)memMap + i * descSize);
+        if (!(desc->Attribute & EFI_MEMORY_RUNTIME)) continue;
+
+        if (desc->PhysicalStart % PAGE_SIZE != 0) {
+            continue;
+        }
+
+        for (UINT64 offset = 0; offset < desc->NumberOfPages * PAGE_SIZE; offset += PAGE_SIZE) {
+            Status = addPage(pml4, (UINT64)(desc->PhysicalStart + offset), desc->PhysicalStart + offset, PAGE_PRESENT | PAGE_RW);
+            if (EFI_ERROR(Status)) return Status;
+        }
+    }
+
     return EFI_SUCCESS;
 }
