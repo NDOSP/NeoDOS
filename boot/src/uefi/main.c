@@ -67,11 +67,11 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* Syste
     Status = loadElf(ConfigNodeGetStr16(&tree[0], (CHAR8*)"Bootloader/KernelLocation", L"\\NEODOS\\KERNEL.BIN"), &bInfo.kInfo);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
 
-    RSDP* rsdp;
-    Status = findACPI(&rsdp);
+    Status = findACPI(&bInfo.rsdp);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
 
     UINTN maxCPU = ConfigNodeGetU64(&tree[0], (CHAR8*)"Bootloader/MaxCPU", 4);
+    bInfo.stackCount = maxCPU;
 
     Status = setVideoMode(vInfo, &bInfo.fb);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
@@ -79,11 +79,13 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* Syste
     Status = initPage(&bInfo.pml4);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
 
-    Status = mapKernelSpace(bInfo.pml4, &bInfo.kInfo, &bInfo.fb.fbPtr, maxCPU);
+    Status = mapKernelSpace(bInfo.pml4, &bInfo.kInfo, &bInfo.fb, maxCPU);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
 
     Status = getMemoryMap(&bInfo.map);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
+
+    CopyMem((VOID*)bInfo.kInfo.bootInfo.paddr, (VOID*)&bInfo, sizeof(bInfo));
 
     return EFI_SUCCESS;
 }
