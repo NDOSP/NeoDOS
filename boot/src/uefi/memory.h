@@ -24,4 +24,21 @@ UINTN align_up(UINTN size, UINTN align);
 EFI_STATUS addPage(UINT64* pml4, UINT64 vaddr, UINT64 paddr, UINT64 flags);
 EFI_STATUS initPage(UINT64** address);
 
+typedef struct {
+    UINT64 address;
+    UINT64 size;
+    UINT32 type;
+    UINT32 reserved[3];
+} MEMORY_MAP_ENTRY; 
+
+typedef struct {
+    UINTN numberOfEntries;
+    UINTN mapKey;
+    UINTN descriptorSize;
+    UINTN descriptorVersion;
+    MEMORY_MAP_ENTRY entries[4096 / sizeof(MEMORY_MAP_ENTRY)] __attribute__((aligned(4096)));
+} MEMORY_MAP;
+
+EFI_STATUS getMemoryMap(MEMORY_MAP* map);
+
 #endif // MEMORY_BOOT_H

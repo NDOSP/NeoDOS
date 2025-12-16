@@ -56,3 +56,37 @@ EFI_STATUS addPage(UINT64* pml4, UINT64 vaddr, UINT64 paddr, UINT64 flags) {
     return EFI_SUCCESS;
 }
 
+EFI_STATUS getMemoryMap(MEMORY_MAP* map) {
+    EFI_MEMORY_DESCRIPTOR* memMap;
+    UINTN descriptorSize;
+    UINT32 descriptorVersion;
+    
+    memMap = LibMemoryMap(&map->numberOfEntries, &map->mapKey, &descriptorSize, &descriptorVersion);
+    map->descriptorSize = descriptorSize;
+    map->descriptorVersion = descriptorVersion;
+
+    UINTN outIndex = 0;
+    for (UINTN i = 0; i < map->numberOfEntries; i++) {
+        EFI_MEMORY_DESCRIPTOR desc = memMap[i];
+        UINT32 type = desc.Type;
+        
+        if (type == EfiBootServicesCode || type == EfiBootServicesData) {
+            type = EfiConventionalMemory;
+        }
+
+        UINT64 start = desc.PhysicalStart;
+        UINT64 size = desc.NumberOfPages * 4096;
+
+        if (outIndex > 0 && map->entries[outIndex - 1].type == EfiConventionalMemory && type == EfiConventionalMemory && map->entries[outIndex - 1].address + map->entries[outIndex - 1].size == start) {
+            map->entries[outIndex - 1].size += size;
+        } else {
+            map->entries[outIndex].address = start;
+            map->entries[outIndex].size = size;
+            map->entries[outIndex].type = type;
+            outIndex++;
+        }
+    }
+
+    map->numberOfEntries = outIndex;
+    return EFI_SUCCESS;
+}

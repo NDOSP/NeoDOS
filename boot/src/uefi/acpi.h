@@ -5,12 +5,17 @@
 #include <efilib.h>
 
 typedef struct {
-    UINT8  Signature[8];  
-    UINT8  Checksum;  
-    UINT8  OemId[6];    
-    UINT8  Revision;  
-    UINT32 RsdtAddress;   
-} __attribute__((packed)) RSDP;
+    CHAR8 Signature[8];  
+    UINT8 Checksum;
+    CHAR8 OemId[6];
+    UINT8 Revision;    
+    UINT32 RsdtAddress;
+    UINT32 Length;
+    UINT64 XsdtAddress;
+    UINT8 ExtendedChecksum;
+    UINT8 Reserved[3];
+} RSDP;
+
 
 EFI_STATUS findACPI(RSDP** rdsp);
 

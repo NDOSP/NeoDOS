@@ -112,7 +112,7 @@ EFI_STATUS loadElf(CHAR16* path, KERNEL_INFO* info) {
     return EFI_SUCCESS;
 }
 
-EFI_STATUS map_core_stacks(UINT64* pml4, UINT64 maxCpu, UINT64* stack_vaddrs) {
+EFI_STATUS map_core_stacks(UINT64* pml4, UINT64 maxCpu) {
     EFI_STATUS Status;
     UINT64 coreStackVaddr = (UINT64)(-(INT64)PAGE_SIZE);
 
@@ -124,19 +124,15 @@ EFI_STATUS map_core_stacks(UINT64* pml4, UINT64 maxCpu, UINT64* stack_vaddrs) {
         Status = addPage(pml4, coreStackVaddr, (UINT64)coreStack, PAGE_PRESENT | PAGE_RW);
         if (EFI_ERROR(Status)) return Status;
 
-        if (stack_vaddrs) {
-            stack_vaddrs[i] = coreStackVaddr;
-        }
-
         coreStackVaddr -= PAGE_SIZE;
     }
 
     return EFI_SUCCESS;
 }
 
-EFI_STATUS mapKernelSpace(UINT64* pml4, KERNEL_INFO* kInfo, VIDEO_FRAMEBUFFER* fb, UINT64 maxCpu, UINT64* stack_vaddrs) {
+EFI_STATUS mapKernelSpace(UINT64* pml4, KERNEL_INFO* kInfo, VIDEO_FRAMEBUFFER* fb, UINT64 maxCpu) {
     EFI_STATUS Status;
-    Status = map_core_stacks(pml4, maxCpu, stack_vaddrs);
+    Status = map_core_stacks(pml4, maxCpu);
     if (EFI_ERROR(Status)) return Status;
 
     for (UINTN i = 0; i < kInfo->segmentCount; i++) {

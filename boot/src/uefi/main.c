@@ -7,9 +7,10 @@
 typedef struct {
     UINT64* pml4;
     UINT64  stackCount;
-    UINT64* stackAddrs;
     VIDEO_FRAMEBUFFER fb;
     KERNEL_INFO kInfo;
+    RSDP* rsdp;
+    MEMORY_MAP map;
 } BOOT_INFO;
 
 CHAR16* registryFileAddress = L"\\NEODOS\\OSDATA.NDR";
@@ -35,6 +36,7 @@ VOID EFIAPI errorHandler(IN EFI_STATUS Status, IN EFI_HANDLE ImageHandle) {
 
 EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* SystemTable) {
     InitializeLib(ImageHandle, SystemTable);
+    BOOT_INFO bInfo;
 
     Print(L"Hello, World!\n");
 
@@ -62,8 +64,7 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* Syste
 
     Print(L"INFO: (video) Using resolution %dx%d\n", vInfo.resolution.width, vInfo.resolution.height);
 
-    KERNEL_INFO kInfo;
-    Status = loadElf(ConfigNodeGetStr16(&tree[0], (CHAR8*)"Bootloader/KernelLocation", L"\\NEODOS\\KERNEL.BIN"), &kInfo);
+    Status = loadElf(ConfigNodeGetStr16(&tree[0], (CHAR8*)"Bootloader/KernelLocation", L"\\NEODOS\\KERNEL.BIN"), &bInfo.kInfo);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
 
     RSDP* rsdp;
@@ -72,22 +73,17 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* Syste
 
     UINTN maxCPU = ConfigNodeGetU64(&tree[0], (CHAR8*)"Bootloader/MaxCPU", 4);
 
-    VIDEO_FRAMEBUFFER fb;
-    Status = setVideoMode(vInfo, &fb);
+    Status = setVideoMode(vInfo, &bInfo.fb);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
 
-    UINT64* pml4;
-    Status = initPage(&pml4);
+    Status = initPage(&bInfo.pml4);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
 
-    UINT64* stackAddrs;
-    Status = uefi_call_wrapper(gBS->AllocatePool, 3, EfiLoaderData, maxCPU * sizeof(UINT64*), (VOID**)&stackAddrs);
+    Status = mapKernelSpace(bInfo.pml4, &bInfo.kInfo, &bInfo.fb.fbPtr, maxCPU);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
 
-    Status = mapKernelSpace(pml4, &kInfo, &fb, maxCPU, stackAddrs);
+    Status = getMemoryMap(&bInfo.map);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
-
-    for(;;) {}
 
     return EFI_SUCCESS;
 }
