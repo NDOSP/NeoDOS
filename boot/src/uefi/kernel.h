@@ -6,6 +6,7 @@
 #include <elf.h>
 
 #include "video.h"
+#include "memory.h"
 
 typedef struct {
     UINT64 paddr;
@@ -22,6 +23,6 @@ typedef struct {
 } KERNEL_INFO;
 
 EFI_STATUS loadElf(CHAR16* path, KERNEL_INFO* info);
-EFI_STATUS mapKernelSpace(UINT64* pml4, KERNEL_INFO* kInfo, VIDEO_FRAMEBUFFER* fb, UINT64 maxCpu);
+EFI_STATUS mapKernelSpace(PAGETABLEENTRY (*pml4)[512], KERNEL_INFO* kInfo, VIDEO_FRAMEBUFFER* fb, UINT64 maxCpu);
 
 #endif // KERNEL_BOOT_H

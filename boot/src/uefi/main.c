@@ -5,7 +5,7 @@
 #include "acpi.h"
 
 typedef struct {
-    UINT64* pml4;
+    PAGETABLEENTRY (*pml4)[512];
     UINT64  stackCount;
     VIDEO_FRAMEBUFFER fb;
     KERNEL_INFO kInfo;
@@ -82,10 +82,55 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* Syste
     Status = mapKernelSpace(bInfo.pml4, &bInfo.kInfo, &bInfo.fb, maxCPU);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
 
+    CopyMem((VOID*)bInfo.kInfo.bootInfo.paddr, (VOID*)&bInfo, sizeof(bInfo));
+
+    EFI_LOADED_IMAGE_PROTOCOL *LoadedImage;
+    Status = uefi_call_wrapper(ST->BootServices->HandleProtocol, 3, ImageHandle, &gEfiLoadedImageProtocolGuid, (void**)&LoadedImage);
+    if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
+
+    UINTN pages = (LoadedImage->ImageSize + 0xFFF) / PAGE_SIZE;
+    for (UINTN i = 0; i < pages; i++) {
+        Status = addPage(bInfo.pml4, (UINT64)LoadedImage->ImageBase + i * PAGE_SIZE, (UINT64)LoadedImage->ImageBase + i * PAGE_SIZE, ENTRY_PRESENT | ENTRY_RW);
+        if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
+    }
+
+    UINT64 rsp, rbp;
+    asm volatile(
+        "mov %%rsp, %0\n"
+        "mov %%rbp, %1\n"
+        : "=r"(rsp), "=r"(rbp)
+        :
+        : "memory"
+    );
+
+    UINT64 stack_low  = (rsp < rbp ? rsp : rbp) & ~0xFFF;
+    UINT64 stack_high = ((rsp > rbp ? rsp : rbp) + PAGE_SIZE) & ~0xFFF;
+    UINTN stackPages = (stack_high - stack_low) / PAGE_SIZE;
+    
+    for (UINTN i = 0; i < stackPages; i++) {
+        Status = addPage(bInfo.pml4, stack_low + i*PAGE_SIZE, stack_low + i*PAGE_SIZE, ENTRY_PRESENT | ENTRY_RW);
+        if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
+    }
+
     Status = getMemoryMap(&bInfo.map);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
 
-    CopyMem((VOID*)bInfo.kInfo.bootInfo.paddr, (VOID*)&bInfo, sizeof(bInfo));
+    Status = uefi_call_wrapper(gBS->ExitBootServices, 2, ImageHandle, bInfo.map.mapKey);
+    if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
+    
+    VOID* entrypoint = (VOID*)bInfo.kInfo.entryPoint;
+    asm volatile(
+        "mov %0, %%cr3"
+        :
+        : "r"(bInfo.pml4)
+        : "memory"
+    );
+    asm volatile(
+        "jmp *%0"
+        :
+        : "r"(entrypoint)
+    );
 
-    return EFI_SUCCESS;
+    errorHandler(EFI_LOAD_ERROR, ImageHandle);
+    return EFI_LOAD_ERROR;
 }

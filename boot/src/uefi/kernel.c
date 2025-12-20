@@ -1,6 +1,5 @@
 #include "kernel.h"
 #include "file.h"
-#include "memory.h"
 #include "video.h"
 
 EFI_STATUS loadElf(CHAR16* path, KERNEL_INFO* info) {
@@ -112,7 +111,7 @@ EFI_STATUS loadElf(CHAR16* path, KERNEL_INFO* info) {
     return EFI_SUCCESS;
 }
 
-EFI_STATUS map_core_stacks(UINT64* pml4, UINT64 maxCpu) {
+EFI_STATUS map_core_stacks(PAGETABLEENTRY (*pml4)[512], UINT64 maxCpu) {
     EFI_STATUS Status;
     UINT64 coreStackVaddr = (UINT64)(-(INT64)PAGE_SIZE);
 
@@ -121,7 +120,7 @@ EFI_STATUS map_core_stacks(UINT64* pml4, UINT64 maxCpu) {
         Status = uefi_call_wrapper(BS->AllocatePages, 4, AllocateAnyPages, EfiLoaderData, 1, &coreStack);
         if (EFI_ERROR(Status)) return Status;
 
-        Status = addPage(pml4, coreStackVaddr, (UINT64)coreStack, PAGE_PRESENT | PAGE_RW);
+        Status = addPage(pml4, coreStackVaddr, (UINT64)coreStack, ENTRY_PRESENT | ENTRY_RW);
         if (EFI_ERROR(Status)) return Status;
 
         coreStackVaddr -= PAGE_SIZE;
@@ -130,21 +129,25 @@ EFI_STATUS map_core_stacks(UINT64* pml4, UINT64 maxCpu) {
     return EFI_SUCCESS;
 }
 
-EFI_STATUS mapKernelSpace(UINT64* pml4, KERNEL_INFO* kInfo, VIDEO_FRAMEBUFFER* fb, UINT64 maxCpu) {
+EFI_STATUS mapKernelSpace(PAGETABLEENTRY (*pml4)[512], KERNEL_INFO* kInfo, VIDEO_FRAMEBUFFER* fb, UINT64 maxCpu) {
     EFI_STATUS Status;
     Status = map_core_stacks(pml4, maxCpu);
     if (EFI_ERROR(Status)) return Status;
 
     for (UINTN i = 0; i < kInfo->segmentCount; i++) {
         MAPPING_INFO* mapping = &kInfo->segmentMapping[i];
-        Status = addPage(pml4, mapping->vaddr, mapping->paddr, PAGE_PRESENT | PAGE_RW);
+        UINT64 flags = 0;
+        if (!(mapping->flags & PF_X)) flags |= ENTRY_EXEC_DISABLE;
+        if (mapping->flags & PF_W) flags |= ENTRY_RW;
+
+        Status = addPage(pml4, mapping->vaddr, mapping->paddr, ENTRY_PRESENT | flags);
         if (EFI_ERROR(Status)) return Status;
     }
 
     if (fb) {
         UINT64 fbSize = fb->fbSize;
         for (UINT64 offset = 0; offset < fbSize; offset += PAGE_SIZE) {
-            Status = addPage(pml4, (UINT64)(fb->fbPtr + offset), (UINT64)(fb->fbPtr + offset), PAGE_PRESENT | PAGE_RW | PAGE_PCD); 
+            Status = addPage(pml4, (UINT64)(fb->fbPtr + offset), (UINT64)(fb->fbPtr + offset), ENTRY_PRESENT | ENTRY_RW | ENTRY_CACHE_DISABLE); 
             if (EFI_ERROR(Status)) return Status;
         }
     }
@@ -170,7 +173,7 @@ EFI_STATUS mapKernelSpace(UINT64* pml4, KERNEL_INFO* kInfo, VIDEO_FRAMEBUFFER* f
         }
 
         for (UINT64 offset = 0; offset < desc->NumberOfPages * PAGE_SIZE; offset += PAGE_SIZE) {
-            Status = addPage(pml4, (UINT64)(desc->PhysicalStart + offset), desc->PhysicalStart + offset, PAGE_PRESENT | PAGE_RW);
+            Status = addPage(pml4, (UINT64)(desc->PhysicalStart + offset), (UINT64)(desc->PhysicalStart + offset), ENTRY_PRESENT | ENTRY_RW);
             if (EFI_ERROR(Status)) return Status;
         }
     }
