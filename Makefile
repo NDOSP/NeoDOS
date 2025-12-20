@@ -8,7 +8,7 @@ all: boot bios_error image
 
 kernel:
 	$(MAKE) -C kernel
-	cp kernel/build/kernel build/NEOKRN.ELF
+	cp kernel/build/kernel.elf build/NEOKRN.ELF
 
 boot:
 	$(MAKE) -C boot

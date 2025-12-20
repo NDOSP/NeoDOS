@@ -120,10 +120,8 @@ EFI_STATUS map_core_stacks(PAGETABLEENTRY (*pml4)[512], UINT64 maxCpu) {
         Status = uefi_call_wrapper(BS->AllocatePages, 4, AllocateAnyPages, EfiLoaderData, 1, &coreStack);
         if (EFI_ERROR(Status)) return Status;
 
-        Status = addPage(pml4, coreStackVaddr, (UINT64)coreStack, ENTRY_PRESENT | ENTRY_RW);
+        Status = addPage(pml4, coreStackVaddr - i * PAGE_SIZE, (UINT64)coreStack, ENTRY_PRESENT | ENTRY_RW | ENTRY_EXEC_DISABLE);
         if (EFI_ERROR(Status)) return Status;
-
-        coreStackVaddr -= PAGE_SIZE;
     }
 
     return EFI_SUCCESS;

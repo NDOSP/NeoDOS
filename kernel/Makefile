@@ -1,21 +1,38 @@
-all: clean build
-
-ASM_DIR := asmfiles
+SRC_DIR := src
 BUILD_DIR := build
 
-ASM_SOURCES := $(wildcard $(ASM_DIR)/*.asm)
-ASM_OBJECTS := $(patsubst $(ASM_DIR)/%.asm,$(BUILD_DIR)/%.o,$(ASM_SOURCES))
+CC := gcc
+AS := nasm
+LD := ld
 
-$(BUILD_DIR)/%.o: $(ASM_DIR)/%.asm
+CFLAGS := -ffreestanding -O2 -Wall -Wextra -nostdlib -nostartfiles
+ASFLAGS := -f elf64
+LDFLAGS := -T linker.ld -nostdlib
+
+C_SOURCES := $(shell find $(SRC_DIR) -type f -name "*.c")
+ASM_SOURCES := $(shell find $(SRC_DIR) -type f -name "*.asm")
+
+C_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(C_SOURCES))
+ASM_OBJECTS := $(patsubst $(SRC_DIR)/%.asm,$(BUILD_DIR)/%.o,$(ASM_SOURCES))
+
+OBJECTS := $(C_OBJECTS) $(ASM_OBJECTS)
+
+all: clean build
+
+# C -> O
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
+	mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# ASM -> O
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.asm
+	mkdir -p $(dir $@)
+	$(AS) $(ASFLAGS) $< -o $@
+
+build: $(OBJECTS)
 	mkdir -p $(BUILD_DIR)
-	nasm -f elf64 $< -o $@
+	cp linker.ld $(BUILD_DIR)/
+	$(LD) $(OBJECTS) $(LDFLAGS) -o $(BUILD_DIR)/kernel.elf
 
 clean:
-	rm -rf build/
-
-build: $(ASM_OBJECTS)
-	mkdir -p $(BUILD_DIR)
-	cp $(CURDIR)/linker.ld $(BUILD_DIR)/
-	
-	$(eval LINKER_OBJS := $(foreach obj,$(ASM_OBJECTS),-z "$(obj)"))
-	c3c build -z "-Tlinker.ld" $(LINKER_OBJS)
+	rm -rf $(BUILD_DIR)

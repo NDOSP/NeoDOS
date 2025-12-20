@@ -28,5 +28,5 @@ qemu-system-x86_64 \
     -drive if=pflash,format=raw,file=$OVMF_DIR/OVMF_VARS.fd \
     -drive file=$DISK_IMG,format=raw \
     -boot menu=on \
-    -serial stdio \
-    -net none
+    -net none \
+    -d int
