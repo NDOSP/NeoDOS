@@ -12,19 +12,21 @@ SECTIONS {
 
     .text : ALIGN(4K) {
         KEEP(*(.text*))
+        . = ALIGN(16);
     } :text
 
     .data : ALIGN(4K) {
         KEEP(*(.data*))
+        . = ALIGN(16);
         KEEP(*(.rodata*))
-    } :data
-
-    .bss : ALIGN(4K) {
+        . = ALIGN(16);
         KEEP(*(.bss*))
         *(COMMON)
+        . = ALIGN(16);
     } :data
 
     .bootinfo : ALIGN(4K) {
         KEEP(*(.bootinfo*))
+        . = ALIGN(16);
     } :bootinfo
 }

@@ -5,9 +5,7 @@
 #include <stddef.h>
 
 typedef enum {
-    VIDEO_ARGB,
     VIDEO_RGBA,
-    VIDEO_ABGR,
     VIDEO_BGRA
 } VideoType;
 

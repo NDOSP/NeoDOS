@@ -75,24 +75,26 @@ EFI_STATUS loadElf(CHAR16* path, KERNEL_INFO* info) {
             Print(L"WARNING: (kernel) Kernel segment at 0x%lX might be too large\n", phdr.p_offset);
         }
 
-        UINTN pagesToAllocate = align_up(memSize, PAGE_SIZE) / PAGE_SIZE;
+        UINT64 pageOffset = phdr.p_vaddr & (PAGE_SIZE - 1);
+        UINT64 totalSize  = align_up(pageOffset + phdr.p_memsz, PAGE_SIZE);
+        UINTN pagesToAllocate = totalSize / PAGE_SIZE;
         UINT8* loadBuffer;
         Status = uefi_call_wrapper(gBS->AllocatePages, 4, AllocateAnyPages, EfiLoaderData, pagesToAllocate, (VOID*)&loadBuffer);
         if (EFI_ERROR(Status)) return Status;
         Print(L"INFO: (kernel) Allocated %d pages for segment(p_vaddr: 0x%lX) at 0x%lX\n", pagesToAllocate, phdr.p_vaddr, loadBuffer);
 
-        CopyMem(loadBuffer, fileData + phdr.p_offset, segmentFileSize);
+        CopyMem(loadBuffer + pageOffset, fileData + phdr.p_offset, phdr.p_filesz);
         Print(L"INFO: (kernel) Loaded segment at 0x%lX, size %ld bytes from file offset 0x%lX\n", loadBuffer, segmentFileSize, phdr.p_offset);
 
         UINTN bssSize = memSize - segmentFileSize;
         if (bssSize > 0) {
-            SetMem(loadBuffer + segmentFileSize, bssSize, 0);
+            SetMem(loadBuffer + pageOffset + phdr.p_filesz, phdr.p_memsz - phdr.p_filesz, 0);
             Print(L"INFO: (kernel) Cleared .bss [%ld..%ld) = %ld bytes\n", segmentFileSize, memSize, bssSize);
         }
 
-        info->segmentMapping[info->segmentCount].paddr = (UINT64)loadBuffer;
         info->segmentMapping[info->segmentCount].vaddr = phdr.p_vaddr & ~(PAGE_SIZE - 1);
-        info->segmentMapping[info->segmentCount].size = memSize;
+        info->segmentMapping[info->segmentCount].paddr = (UINT64)loadBuffer;
+        info->segmentMapping[info->segmentCount].size  = totalSize;
         info->segmentMapping[info->segmentCount].flags = phdr.p_flags;
         info->segmentCount++;
 
