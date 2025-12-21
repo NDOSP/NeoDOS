@@ -4,15 +4,6 @@
 #include "memory.h"
 #include "acpi.h"
 
-typedef struct {
-    PAGETABLEENTRY (*pml4)[512];
-    UINT64  stackCount;
-    VIDEO_FRAMEBUFFER fb;
-    KERNEL_INFO kInfo;
-    RSDP* rsdp;
-    MEMORY_MAP map;
-} BOOT_INFO;
-
 CHAR16* registryFileAddress = L"\\NEODOS\\OSDATA.NDR";
 
 VOID EFIAPI errorHandler(IN EFI_STATUS Status, IN EFI_HANDLE ImageHandle) {

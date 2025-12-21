@@ -14,12 +14,9 @@ SECTIONS {
         KEEP(*(.text*))
     } :text
 
-    .rodata : ALIGN(4K) {
-        KEEP(*(.rodata*))
-    } :text
-
     .data : ALIGN(4K) {
         KEEP(*(.data*))
+        KEEP(*(.rodata*))
     } :data
 
     .bss : ALIGN(4K) {

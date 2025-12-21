@@ -91,7 +91,7 @@ EFI_STATUS loadElf(CHAR16* path, KERNEL_INFO* info) {
         }
 
         info->segmentMapping[info->segmentCount].paddr = (UINT64)loadBuffer;
-        info->segmentMapping[info->segmentCount].vaddr = phdr.p_vaddr;
+        info->segmentMapping[info->segmentCount].vaddr = phdr.p_vaddr & ~(PAGE_SIZE - 1);
         info->segmentMapping[info->segmentCount].size = memSize;
         info->segmentMapping[info->segmentCount].flags = phdr.p_flags;
         info->segmentCount++;
@@ -99,7 +99,7 @@ EFI_STATUS loadElf(CHAR16* path, KERNEL_INFO* info) {
         if (phdr.p_flags == PF_R) {
             Print(L"INFO: (kernel) Found .bootinfo Program Segment at (paddr: 0x%lX, vaddr: 0x%lX)\n", (UINT64)loadBuffer, phdr.p_vaddr);
             info->bootInfo.flags = phdr.p_flags;
-            info->bootInfo.vaddr = phdr.p_vaddr;
+            info->bootInfo.vaddr = phdr.p_vaddr & ~(PAGE_SIZE - 1);
             info->bootInfo.paddr = (UINT64)loadBuffer;
             info->bootInfo.size = memSize;
         }
@@ -138,8 +138,10 @@ EFI_STATUS mapKernelSpace(PAGETABLEENTRY (*pml4)[512], KERNEL_INFO* kInfo, VIDEO
         if (!(mapping->flags & PF_X)) flags |= ENTRY_EXEC_DISABLE;
         if (mapping->flags & PF_W) flags |= ENTRY_RW;
 
-        Status = addPage(pml4, mapping->vaddr, mapping->paddr, ENTRY_PRESENT | flags);
-        if (EFI_ERROR(Status)) return Status;
+        for (UINT64 offset = 0; offset < mapping->size; offset += PAGE_SIZE) {
+            Status = addPage(pml4, mapping->vaddr + offset, mapping->paddr + offset, ENTRY_PRESENT | flags);
+            if (EFI_ERROR(Status)) return Status;
+        }
     }
 
     if (fb) {

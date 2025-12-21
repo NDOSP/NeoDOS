@@ -2,7 +2,8 @@
 
 __attribute__((section(".bootinfo"))) BootInfo bInfo;
 
+const char* test = "Hello, World!";
+
 void kmain() {
-    asm volatile("ud2");
     asm volatile("hlt");
 }

@@ -23,10 +23,14 @@ if [[ ! -f "$DISK_IMG" ]]; then
     exit 1
 fi
 
+rm -rf debug/
+mkdir debug/
+
 qemu-system-x86_64 \
     -drive if=pflash,format=raw,readonly=on,file=$OVMF_DIR/OVMF_CODE.fd \
     -drive if=pflash,format=raw,file=$OVMF_DIR/OVMF_VARS.fd \
     -drive file=$DISK_IMG,format=raw \
     -boot menu=on \
     -net none \
-    -d int
+    -d int \
+    -serial file:debug/serial.log
