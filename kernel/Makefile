@@ -17,7 +17,7 @@ ASM_OBJECTS := $(patsubst $(SRC_DIR)/%.asm,$(BUILD_DIR)/%.o,$(ASM_SOURCES))
 
 OBJECTS := $(C_OBJECTS) $(ASM_OBJECTS)
 
-all: clean build
+all: build
 
 # C -> O
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c

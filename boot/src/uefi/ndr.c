@@ -1,4 +1,5 @@
 #include "ndr.h"
+#include "checksum.h"
 #include <efilib.h>
 
 typedef struct __attribute__((packed)) {
@@ -196,41 +197,26 @@ BOOLEAN ConfigNodeGetValueByPath(const ConfigNode *root, const CHAR8 *path, Entr
 UINT64 ConfigNodeGetU64(ConfigNode *root, const CHAR8 *path, UINT64 def) {
     EntryValue val;
     if (ConfigNodeGetValueByPath(root, path, &val)) return val.num;
+    Print(L"WARNING: (config) Falling back on set up value\n");
     return def;
 }
 
 CHAR8* ConfigNodeGetStr8(ConfigNode *root, const CHAR8 *path, CHAR8 *def) {
     EntryValue val;
     if (ConfigNodeGetValueByPath(root, path, &val)) return val.str8;
+    Print(L"WARNING: (config) Falling back on set up value\n");
     return def;
 }
 
 CHAR16* ConfigNodeGetStr16(ConfigNode *root, const CHAR8 *path, CHAR16 *def) {
     EntryValue val;
     if (ConfigNodeGetValueByPath(root, path, &val)) return val.str16;
+    Print(L"WARNING: (config) Falling back on set up value\n");
     return def;
 }
 
 const UINTN HEADER_CHECKSUM_OFFSET = 12;
 const UINTN REGISTRY_TABLE_CRC_OFFSET = 12;
-
-uint32_t crc32(const VOID* data, UINTN length) {
-    uint32_t crc = 0xFFFFFFFF;
-    const uint8_t *buf = (const uint8_t *)data;
-
-    for (UINTN i = 0; i < length; i++) {
-        crc ^= buf[i];
-        for (int j = 0; j < 8; j++) {
-            if (crc & 1) {
-                crc = (crc >> 1) ^ 0xEDB88320;
-            } else {
-                crc = crc >> 1;
-            }
-        }
-    }
-
-    return crc ^ 0xFFFFFFFF;
-}
 
 BOOLEAN verifyHeader(const HEADER *header) {
     const uint8_t *hdr_bytes = (const uint8_t*)header;

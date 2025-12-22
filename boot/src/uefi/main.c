@@ -3,6 +3,7 @@
 #include "kernel.h"
 #include "memory.h"
 #include "acpi.h"
+#include "nff.h"
 
 CHAR16* registryFileAddress = L"\\NEODOS\\OSDATA.NDR";
 
@@ -64,13 +65,18 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* Syste
     UINTN maxCPU = ConfigNodeGetU64(&tree[0], (CHAR8*)"Bootloader/MaxCPU", 4);
     bInfo.stackCount = maxCPU;
 
+    Status = loadFont(ConfigNodeGetStr16(&tree[0], (CHAR8*)"Bootloader/FontLocation", L"\\NEODOS\\FONT.BLL"), &bInfo.font);
+    if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
+
+    bInfo.fontScale = ConfigNodeGetU64(&tree[0], (CHAR8*)"SystemConfig/Scale", 1);
+
     Status = setVideoMode(vInfo, &bInfo.fb);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
 
     Status = initPage(&bInfo.pml4);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
 
-    Status = mapKernelSpace(bInfo.pml4, &bInfo.kInfo, &bInfo.fb, maxCPU);
+    Status = mapKernelSpace(bInfo.pml4, &bInfo.kInfo, &bInfo.fb, maxCPU, bInfo.font);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
 
     CopyMem((VOID*)bInfo.kInfo.bootInfo.paddr, (VOID*)&bInfo, sizeof(bInfo));

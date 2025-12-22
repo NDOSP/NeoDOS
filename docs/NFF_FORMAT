@@ -1,0 +1,23 @@
+[ALIGMENT: 16B]
+
+HEADER:
+    MAGIC: "NFF\0"
+    VERSION: 4B
+    WIDTH: 2B
+    HEIGHT: 2B
+    CHAR_COUNT: 4B
+ALIGN
+
+CHAR_TABLE:
+    REPEAT CHAR_COUNT {
+        RESERVED: 1B
+        ASCII_VALUE: 1B
+        RESERVED: 2B
+        FILE_ADDRESS: 8B
+        ENTRY_CHECKSUM: 4B
+    }
+ALIGN
+
+DATA:
+    DATA
+    ALIGN

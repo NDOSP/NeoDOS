@@ -1,9 +1,65 @@
 #include "video.h"
 
 VideoFramebuffer fbData;
+FontInfo* font;
+uint64_t scale;
 
-void initVideo(VideoFramebuffer fb) {
-    fbData = fb;
+void initVideo(BootInfo* bInfo) {
+    fbData = bInfo->fb;
+    font = bInfo->font;
+    scale = bInfo->fontScale;
+}
+
+static FontGlyph* findGlyph(char c) {
+    for (uint32_t i = 0; i < font->glyphCount; i++) {
+        if (font->glyphs[i].ascii == (uint8_t)c) return &font->glyphs[i];
+    }
+
+    for (uint32_t i = 0; i < font->glyphCount; i++) {
+        if (font->glyphs[i].ascii == (uint8_t)'?')
+            return &font->glyphs[i];
+    }
+
+    return &font->glyphs[0];
+}
+
+void putPixelScaled(uint32_t x, uint32_t y, VideoColor color) {
+    for (uint32_t dy = 0; dy < scale; dy++) {
+        for (uint32_t dx = 0; dx < scale; dx++) {
+            putPixel(x + dx, y + dy, color);
+        }
+    }
+}
+
+void drawChar(char c, uint32_t x, uint32_t y, VideoColor color) {
+    FontGlyph* glyph = findGlyph(c);
+    if (!glyph) return;
+
+    uint8_t* bmp = (uint8_t*)glyph->bitmap;
+    uint32_t bytesPerRow = font->bytesPerGlyph / font->fontHeight;
+
+    for (uint32_t row = 0; row < font->fontHeight; row++) {
+        for (uint32_t col = 0; col < font->fontWidth; col++) {
+            uint32_t byteIndex = row * bytesPerRow + (col / 8);
+            uint8_t bitMask = 0x80 >> (col % 8); 
+            if (bmp[byteIndex] & bitMask) {
+                putPixelScaled(x + col * scale, y + row * scale, color);
+            }
+        }
+    }
+}
+
+void drawString(const char* str, uint32_t x, uint32_t y, VideoColor color) {
+    if (!str) return;
+
+    uint32_t cursorX = x;
+    uint32_t cursorY = y;
+
+    while (*str) {
+        drawChar(*str, cursorX, cursorY, color);
+        cursorX += font->fontWidth * scale;
+        str++;
+    }
 }
 
 static inline uint32_t colorToUint32(VideoColor c, int format) {

@@ -4,6 +4,20 @@
 #include <stdint.h>
 #include <stddef.h>
 
+typedef struct {
+    uint8_t ascii;
+    void* bitmap;
+} FontGlyph;
+
+typedef struct {
+    uint32_t version;
+    uint32_t fontWidth;
+    uint32_t fontHeight;
+    uint32_t glyphCount;
+    uint32_t bytesPerGlyph;
+    FontGlyph glyphs[];
+} FontInfo;
+
 typedef enum {
     VIDEO_RGBA,
     VIDEO_BGRA
@@ -67,6 +81,9 @@ typedef struct {
     VideoFramebuffer fb;
     KernelInfo kInfo;
     Rsdp* rsdp;
+    FontInfo* font;
+    uint64_t fontScale;
+    MemoryMap map;
 } BootInfo;
 
 extern BootInfo bInfo;

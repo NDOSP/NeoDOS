@@ -1,15 +1,16 @@
 #include "bootinfo.h"
 #include "video.h"
+#include "memory.h"
 
 __attribute__((section(".bootinfo"))) BootInfo bInfo;
 
 void kmain() {
-    initVideo(bInfo.fb);
-    VideoColor red = { .red = 255, .green = 0, .blue = 0 };
-    for (uint32_t y = 0; y < bInfo.fb.fbHeight; y++) {
-        for (uint32_t x = 0; x < bInfo.fb.fbWidth; x++) {
-            putPixel(x, y, red);
-        }
-    }
+    initVideo(&bInfo);
+    VideoColor white = { .red = 255, .green = 255, .blue = 255 };
+    drawString("ABCDEFGHIJKL", 0, 0, white);
+    drawString("MNOPRSTUWXYZ", 0, bInfo.font->fontHeight * 2, white);
+    drawString("abcdefghijkl", 0, bInfo.font->fontHeight * 4, white);
+    drawString("mnoprstuwxyz", 0, bInfo.font->fontHeight * 6, white);
+    drawString("1234567890", 0, bInfo.font->fontHeight * 8, white);
     asm volatile("hlt");
 }

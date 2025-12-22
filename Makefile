@@ -32,6 +32,10 @@ image: kernel boot tools bios_error
 	./build/ndrcreator encode
 	rm -rf data.json
 	mv output.ndr build/OSDATA.NDR
+
+	cp data/font.json data.json
+	./build/nffcreator data.json build/FONT.NFF
+	rm -rf data.json
 	
 	@sudo bash -c '\
 		LOOP=$$(losetup -f --show -o 1048576 $(DISK_IMG) 2>/dev/null); \
@@ -47,6 +51,7 @@ image: kernel boot tools bios_error
 		cp $(BUILD_DIR)/BOOTX64.EFI $(BUILD_DIR)/mnt/EFI/BOOT/BOOTX64.EFI; \
 		cp $(BUILD_DIR)/OSDATA.NDR $(BUILD_DIR)/mnt/NEODOS/OSDATA.NDR; \
 		cp $(BUILD_DIR)/NEOKRN.ELF $(BUILD_DIR)/mnt/NEODOS/NEOKRN.ELF; \
+		cp $(BUILD_DIR)/FONT.NFF $(BUILD_DIR)/mnt/NEODOS/FONT.NFF; \
 		sync; \
 		umount $(BUILD_DIR)/mnt 2>/dev/null; \
 		losetup -d $$LOOP 2>/dev/null || true; \

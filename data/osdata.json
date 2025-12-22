@@ -12,6 +12,11 @@
         "name":"Height",
         "type":"R_U64",
         "value":480
+      },
+      {
+        "name":"Scale",
+        "type":"R_U64",
+        "value":2
       }
     ]
   },
@@ -22,12 +27,17 @@
       {
         "name":"KernelLocation",
         "type":"R_STR16",
-        "value":"\\NeoDOS\\NEOKRN.ELF"
+        "value":"\\NEODOS\\NEOKRN.ELF"
       },
       {
         "name":"MaxCPU",
         "type":"R_U64",
         "value":8
+      },
+      {
+        "name":"FontLocation",
+        "type":"R_STR16",
+        "value":"\\NEODOS\\FONT.NFF"
       }
     ]
   }

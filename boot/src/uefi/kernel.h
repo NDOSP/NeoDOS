@@ -8,6 +8,7 @@
 #include "video.h"
 #include "memory.h"
 #include "acpi.h"
+#include "nff.h"
 
 typedef struct {
     UINT64 paddr;
@@ -29,10 +30,12 @@ typedef struct {
     VIDEO_FRAMEBUFFER fb;
     KERNEL_INFO kInfo;
     RSDP* rsdp;
+    FONT_INFO* font;
+    UINT64 fontScale;
     MEMORY_MAP map;
 } BOOT_INFO;
 
 EFI_STATUS loadElf(CHAR16* path, KERNEL_INFO* info);
-EFI_STATUS mapKernelSpace(PAGETABLEENTRY (*pml4)[512], KERNEL_INFO* kInfo, VIDEO_FRAMEBUFFER* fb, UINT64 maxCpu);
+EFI_STATUS mapKernelSpace(PAGETABLEENTRY (*pml4)[512], KERNEL_INFO* kInfo, VIDEO_FRAMEBUFFER* fb, UINT64 maxCpu, FONT_INFO* font);
 
 #endif // KERNEL_BOOT_H
