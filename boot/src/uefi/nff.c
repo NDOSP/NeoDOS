@@ -79,5 +79,6 @@ EFI_STATUS loadFont(CHAR16* fileAddress, FONT_INFO** font) {
     }
 
     *font = outFont;
+    FreePool(fileData);
     return EFI_SUCCESS;
 }

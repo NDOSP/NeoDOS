@@ -159,33 +159,7 @@ EFI_STATUS mapKernelSpace(PAGETABLEENTRY (*pml4)[512], KERNEL_INFO* kInfo, VIDEO
         UINT64 fontSizePages = (sizeof(FONT_INFO) + font->glyphCount * sizeof(FONT_GLYPH) + font->glyphCount * font->bytesPerGlyph + PAGE_SIZE - 1) / PAGE_SIZE;
 
         for (UINT64 offset = 0; offset < fontSizePages * PAGE_SIZE; offset += PAGE_SIZE) {
-            Status = addPage(pml4, fontStart + offset, fontStart + offset, ENTRY_PRESENT | ENTRY_RW | ENTRY_EXEC_DISABLE);
-            if (EFI_ERROR(Status)) return Status;
-        }
-    }
-
-    EFI_MEMORY_DESCRIPTOR* memMap = NULL;
-    UINTN mapSize = 0, mapKey, descSize;
-    UINT32 descVersion;
-    Status = uefi_call_wrapper(BS->GetMemoryMap, 5, &mapSize, memMap, &mapKey, &descSize, &descVersion);
-    if (Status == EFI_BUFFER_TOO_SMALL) {
-        Status = uefi_call_wrapper(BS->AllocatePool, 3, EfiLoaderData, mapSize, (void**)&memMap);
-        if (EFI_ERROR(Status)) return Status;
-        Status = uefi_call_wrapper(BS->GetMemoryMap, 5, &mapSize, memMap, &mapKey, &descSize, &descVersion);
-        if (EFI_ERROR(Status)) return Status;
-    }
-
-    UINTN count = mapSize / descSize;
-    for (UINTN i = 0; i < count; i++) {
-        EFI_MEMORY_DESCRIPTOR* desc = (EFI_MEMORY_DESCRIPTOR*)((UINT8*)memMap + i * descSize);
-        if (!(desc->Attribute & EFI_MEMORY_RUNTIME)) continue;
-
-        if (desc->PhysicalStart % PAGE_SIZE != 0) {
-            continue;
-        }
-
-        for (UINT64 offset = 0; offset < desc->NumberOfPages * PAGE_SIZE; offset += PAGE_SIZE) {
-            Status = addPage(pml4, (UINT64)(desc->PhysicalStart + offset), (UINT64)(desc->PhysicalStart + offset), ENTRY_PRESENT | ENTRY_RW);
+            Status = addPage(pml4, fontStart + offset, fontStart + offset, ENTRY_PRESENT | ENTRY_EXEC_DISABLE);
             if (EFI_ERROR(Status)) return Status;
         }
     }

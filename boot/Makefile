@@ -12,8 +12,17 @@ BIOS_BINS := $(patsubst $(BOOT_SRC)/bios/%.asm,$(BUILD_DIR)/%.bin,$(BIOS_SRCS))
 
 UEFI_SRCS := $(wildcard $(BOOT_SRC)/uefi/*.c)
 UEFI_OBJS := $(patsubst $(BOOT_SRC)/uefi/%.c,$(BUILD_DIR)/%.o,$(UEFI_SRCS))
+
+UEFI_ASM_SRCS := $(wildcard $(BOOT_SRC)/uefi/*.asm)
+UEFI_ASM_OBJS := $(patsubst $(BOOT_SRC)/uefi/%.asm,$(BUILD_DIR)/%.o,$(UEFI_ASM_SRCS))
+
+UEFI_ALL_OBJS := $(UEFI_OBJS) $(UEFI_ASM_OBJS)
 UEFI_CRT0 := /usr/lib/crt0-efi-x86_64.o
 UEFI_EFI := $(BUILD_DIR)/BOOTX64.EFI
+
+$(BUILD_DIR)/%.o: $(BOOT_SRC)/uefi/%.asm
+	@mkdir -p $(BUILD_DIR)
+	$(ASM) -f elf64 $< -o $@
 
 EFI_CFLAGS := -I/usr/include/efi -I/usr/include/efi/x86_64 \
               -I/usr/include/efi/protocol \
@@ -34,11 +43,11 @@ $(BUILD_DIR)/%.o: $(BOOT_SRC)/uefi/%.c
 	@mkdir -p $(BUILD_DIR)
 	$(CC) $(EFI_CFLAGS) -c $< -o $@
 
-$(UEFI_EFI): $(UEFI_OBJS)
+$(UEFI_EFI): $(UEFI_ALL_OBJS)
 	@mkdir -p $(BUILD_DIR)
 	$(LD) -nostdlib -znocombreloc -shared -Bsymbolic \
           -T /usr/lib/elf_x86_64_efi.lds \
-          $(UEFI_CRT0) $(UEFI_OBJS) \
+          $(UEFI_CRT0) $(UEFI_ALL_OBJS) \
           -L/usr/lib -lgnuefi -lefi \
           -o $(BUILD_DIR)/uefi.elf
 	objcopy -j .text -j .sdata -j .data -j .dynamic \

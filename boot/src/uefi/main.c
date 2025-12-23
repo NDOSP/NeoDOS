@@ -5,6 +5,14 @@
 #include "acpi.h"
 #include "nff.h"
 
+extern UINT8 kernelJump_start, kernelJump_end;
+
+UINTN kernelJump_size(void) {
+    return &kernelJump_end - &kernelJump_start;
+}
+
+extern VOID kernelJump(VOID* entry, UINT64 pml4);
+
 CHAR16* registryFileAddress = L"\\NEODOS\\OSDATA.NDR";
 
 VOID EFIAPI errorHandler(IN EFI_STATUS Status, IN EFI_HANDLE ImageHandle) {
@@ -28,12 +36,18 @@ VOID EFIAPI errorHandler(IN EFI_STATUS Status, IN EFI_HANDLE ImageHandle) {
 
 EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* SystemTable) {
     InitializeLib(ImageHandle, SystemTable);
+    EFI_STATUS Status;
     BOOT_INFO bInfo;
 
+    EFI_LOADED_IMAGE_PROTOCOL *LoadedImage;
+    Status = uefi_call_wrapper(ST->BootServices->HandleProtocol, 3, ImageHandle, &gEfiLoadedImageProtocolGuid, (void**)&LoadedImage);
+    if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
+
     Print(L"Hello, World!\n");
+    Print(L"INFO: (loader) ImageHandle: 0x%lX, SystemTable: 0x%lX, ImageBase: 0x%lX\n", ImageHandle, SystemTable, LoadedImage->ImageBase);
 
     ConfigNode* tree;
-    EFI_STATUS Status = getConfig(registryFileAddress, &tree);
+    Status = getConfig(registryFileAddress, &tree);
     if (EFI_ERROR(Status)) {
         Print(L"ERROR: (config) Unexpected error: %r\n", Status);
         errorHandler(Status, ImageHandle);
@@ -80,34 +94,8 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* Syste
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
 
     CopyMem((VOID*)bInfo.kInfo.bootInfo.paddr, (VOID*)&bInfo, sizeof(bInfo));
-
-    EFI_LOADED_IMAGE_PROTOCOL *LoadedImage;
-    Status = uefi_call_wrapper(ST->BootServices->HandleProtocol, 3, ImageHandle, &gEfiLoadedImageProtocolGuid, (void**)&LoadedImage);
+    Status = addPage(bInfo.pml4, (UINT64)&kernelJump_start, (UINT64)&kernelJump_start, ENTRY_PRESENT | ENTRY_RW);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
-
-    UINTN pages = (LoadedImage->ImageSize + 0xFFF) / PAGE_SIZE;
-    for (UINTN i = 0; i < pages; i++) {
-        Status = addPage(bInfo.pml4, (UINT64)LoadedImage->ImageBase + i * PAGE_SIZE, (UINT64)LoadedImage->ImageBase + i * PAGE_SIZE, ENTRY_PRESENT | ENTRY_RW);
-        if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
-    }
-
-    UINT64 rsp, rbp;
-    asm volatile(
-        "mov %%rsp, %0\n"
-        "mov %%rbp, %1\n"
-        : "=r"(rsp), "=r"(rbp)
-        :
-        : "memory"
-    );
-
-    UINT64 stack_low  = (rsp < rbp ? rsp : rbp) & ~0xFFF;
-    UINT64 stack_high = ((rsp > rbp ? rsp : rbp) + PAGE_SIZE) & ~0xFFF;
-    UINTN stackPages = (stack_high - stack_low) / PAGE_SIZE;
-    
-    for (UINTN i = 0; i < stackPages; i++) {
-        Status = addPage(bInfo.pml4, stack_low + i*PAGE_SIZE, stack_low + i*PAGE_SIZE, ENTRY_PRESENT | ENTRY_RW);
-        if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
-    }
 
     Status = getMemoryMap(&bInfo.map);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
@@ -115,18 +103,7 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* Syste
     Status = uefi_call_wrapper(gBS->ExitBootServices, 2, ImageHandle, bInfo.map.mapKey);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
     
-    VOID* entrypoint = (VOID*)bInfo.kInfo.entryPoint;
-    asm volatile(
-        "mov %0, %%cr3"
-        :
-        : "r"(bInfo.pml4)
-        : "memory"
-    );
-    asm volatile(
-        "jmp *%0"
-        :
-        : "r"(entrypoint)
-    );
+    kernelJump((VOID*)bInfo.kInfo.entryPoint, (UINT64)bInfo.pml4);
 
     errorHandler(EFI_LOAD_ERROR, ImageHandle);
     return EFI_LOAD_ERROR;

@@ -46,7 +46,6 @@ error:  db 0x0D, 0x0A
         db "This system requires UEFI firmware.", 0x0D, 0x0A
         db "Your computer is booting in legacy BIOS mode.", 0x0D, 0x0A, 0x0A
         db "Please enable UEFI in your BIOS/UEFI settings.", 0x0D, 0x0A, 0x0A
-        db "System halted.", 0x0D, 0x0A
-        db "NeoDOS Boot Shell failed to load.", 0x0D, 0x0A, 0
+        db "System halted.", 0x0D, 0x0A, 0
 
 times 446 - ($ - $$) db 00
