@@ -1,3 +1,5 @@
+[BITS 64]
+
 section .data
     align 16
 

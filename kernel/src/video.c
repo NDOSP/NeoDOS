@@ -78,3 +78,18 @@ void putPixel(uint32_t x, uint32_t y, VideoColor color) {
     uint64_t pos = x + y * fbData.fbWidth;
     fbPtr[pos] = colorToUint32(color, fbData.pixelFormat);
 }
+
+void cleanScreen(VideoColor color) {
+    for (uint32_t y = 0; y < fbData.fbHeight; y++) {
+        for (uint32_t x = 0; x < fbData.fbWidth; x++) {
+            putPixel(x, y, color);
+        }
+    }
+}
+
+
+VideoColor black = { .blue = 0, .green = 0, .red = 0 };
+VideoColor red = { .blue = 0, .green = 0, .red = 255 };
+VideoColor blue = { .blue = 255, .green = 0, .red = 0 };
+VideoColor green = { .blue = 0, .green = 255, .red = 0 };
+VideoColor white = { .blue = 255, .green = 255, .red = 255 };

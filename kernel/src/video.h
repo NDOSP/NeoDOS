@@ -10,9 +10,16 @@ typedef struct {
     uint8_t blue;
 } VideoColor;
 
+extern VideoColor white;
+extern VideoColor black;
+extern VideoColor red;
+extern VideoColor blue;
+extern VideoColor green;
+
 void initVideo(BootInfo* bInfo);
 void putPixel(uint32_t x, uint32_t y, VideoColor color);
 void drawChar(char c, uint32_t x, uint32_t y, VideoColor color);
 void drawString(const char* str, uint32_t x, uint32_t y, VideoColor color);
+void cleanScreen(VideoColor color);
 
 #endif // VIDEO_H
