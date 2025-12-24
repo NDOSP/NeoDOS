@@ -86,6 +86,7 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* Syste
 
     Status = setVideoMode(vInfo, &bInfo.fb);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
+    if (!((UINTN)bInfo.fb.pixelFormat == (UINTN)PixelBlueGreenRedReserved8BitPerColor || (UINTN)bInfo.fb.pixelFormat == (UINTN)PixelRedGreenBlueReserved8BitPerColor)) errorHandler(EFI_UNSUPPORTED, ImageHandle);
 
     Status = initPage(&bInfo.pml4);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);

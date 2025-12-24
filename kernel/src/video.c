@@ -1,31 +1,22 @@
 #include "video.h"
-
-VideoFramebuffer fbData;
-FontInfo* font;
-uint64_t scale;
-
-void initVideo(BootInfo* bInfo) {
-    fbData = bInfo->fb;
-    font = bInfo->font;
-    scale = bInfo->fontScale;
-}
+#include "memory.h"
 
 static FontGlyph* findGlyph(char c) {
-    for (uint32_t i = 0; i < font->glyphCount; i++) {
-        if (font->glyphs[i].ascii == (uint8_t)c) return &font->glyphs[i];
+    for (uint32_t i = 0; i < bInfo.font->glyphCount; i++) {
+        if (bInfo.font->glyphs[i].ascii == (uint8_t)c) return &bInfo.font->glyphs[i];
     }
 
-    for (uint32_t i = 0; i < font->glyphCount; i++) {
-        if (font->glyphs[i].ascii == (uint8_t)'?')
-            return &font->glyphs[i];
+    for (uint32_t i = 0; i < bInfo.font->glyphCount; i++) {
+        if (bInfo.font->glyphs[i].ascii == (uint8_t)'?')
+            return &bInfo.font->glyphs[i];
     }
 
-    return &font->glyphs[0];
+    return &bInfo.font->glyphs[0];
 }
 
 void putPixelScaled(uint32_t x, uint32_t y, VideoColor color) {
-    for (uint32_t dy = 0; dy < scale; dy++) {
-        for (uint32_t dx = 0; dx < scale; dx++) {
+    for (uint32_t dy = 0; dy < bInfo.fontScale; dy++) {
+        for (uint32_t dx = 0; dx < bInfo.fontScale; dx++) {
             putPixel(x + dx, y + dy, color);
         }
     }
@@ -36,14 +27,14 @@ void drawChar(char c, uint32_t x, uint32_t y, VideoColor color) {
     if (!glyph) return;
 
     uint8_t* bmp = (uint8_t*)glyph->bitmap;
-    uint32_t bytesPerRow = font->bytesPerGlyph / font->fontHeight;
+    uint32_t bytesPerRow = bInfo.font->bytesPerGlyph / bInfo.font->fontHeight;
 
-    for (uint32_t row = 0; row < font->fontHeight; row++) {
-        for (uint32_t col = 0; col < font->fontWidth; col++) {
+    for (uint32_t row = 0; row < bInfo.font->fontHeight; row++) {
+        for (uint32_t col = 0; col < bInfo.font->fontWidth; col++) {
             uint32_t byteIndex = row * bytesPerRow + (col / 8);
             uint8_t bitMask = 0x80 >> (col % 8); 
             if (bmp[byteIndex] & bitMask) {
-                putPixelScaled(x + col * scale, y + row * scale, color);
+                putPixelScaled(x + col * bInfo.fontScale, y + row * bInfo.fontScale, color);
             }
         }
     }
@@ -57,9 +48,47 @@ void drawString(const char* str, uint32_t x, uint32_t y, VideoColor color) {
 
     while (*str) {
         drawChar(*str, cursorX, cursorY, color);
-        cursorX += font->fontWidth * scale;
+        cursorX += bInfo.font->fontWidth * bInfo.fontScale;
         str++;
     }
+}
+
+static uint32_t Posx = 0;
+static uint32_t Posy = 0;
+
+void drawOutput(const char* str, VideoColor color) {
+    if (!str) return;
+
+    while (*str) {
+        if (*str == '\n') {
+            Posy += bInfo.font->fontHeight * bInfo.fontScale;
+            Posx = 0;
+            str++;
+            continue;
+        }
+
+        drawChar(*str, Posx, Posy, color);
+        Posx += bInfo.font->fontWidth * bInfo.fontScale;
+        str++;
+
+        if (Posy + bInfo.font->fontHeight * bInfo.fontScale > bInfo.fb.fbHeight) {
+            uint32_t rowBytes = bInfo.fb.fbWidth * sizeof(uint32_t);
+            uint32_t offset = bInfo.font->fontHeight * bInfo.fontScale * rowBytes;
+            uint32_t size = (bInfo.fb.fbHeight * rowBytes) - offset;
+
+            uint8_t* fb = (uint8_t*)bInfo.fb.fbPtr;
+
+            memcpy(fb, fb + offset, size);
+
+            memset(fb + size, 0, offset);
+            Posy -= bInfo.font->fontHeight * bInfo.fontScale;
+        }
+    }
+}
+
+void SetCursorPos(uint32_t x, uint32_t y) {
+    Posx = x;
+    Posy = y;
 }
 
 static inline uint32_t colorToUint32(VideoColor c, int format) {
@@ -71,17 +100,17 @@ static inline uint32_t colorToUint32(VideoColor c, int format) {
 }
 
 void putPixel(uint32_t x, uint32_t y, VideoColor color) {
-    if (x >= fbData.fbWidth) return;
-    if (y >= fbData.fbHeight) return;
+    if (x >= bInfo.fb.fbWidth) return;
+    if (y >= bInfo.fb.fbHeight) return;
 
-    uint32_t* fbPtr = (uint32_t*)fbData.fbPtr;
-    uint64_t pos = x + y * fbData.fbWidth;
-    fbPtr[pos] = colorToUint32(color, fbData.pixelFormat);
+    uint32_t* fbPtr = (uint32_t*)bInfo.fb.fbPtr;
+    uint64_t pos = x + y * bInfo.fb.fbWidth;
+    fbPtr[pos] = colorToUint32(color, bInfo.fb.pixelFormat);
 }
 
 void cleanScreen(VideoColor color) {
-    for (uint32_t y = 0; y < fbData.fbHeight; y++) {
-        for (uint32_t x = 0; x < fbData.fbWidth; x++) {
+    for (uint32_t y = 0; y < bInfo.fb.fbHeight; y++) {
+        for (uint32_t x = 0; x < bInfo.fb.fbWidth; x++) {
             putPixel(x, y, color);
         }
     }

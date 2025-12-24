@@ -16,10 +16,11 @@ extern VideoColor red;
 extern VideoColor blue;
 extern VideoColor green;
 
-void initVideo(BootInfo* bInfo);
 void putPixel(uint32_t x, uint32_t y, VideoColor color);
 void drawChar(char c, uint32_t x, uint32_t y, VideoColor color);
 void drawString(const char* str, uint32_t x, uint32_t y, VideoColor color);
+void drawOutput(const char* str, VideoColor color);
 void cleanScreen(VideoColor color);
+void SetCursorPos(uint32_t x, uint32_t y);
 
 #endif // VIDEO_H
