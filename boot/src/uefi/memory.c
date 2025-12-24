@@ -78,7 +78,7 @@ EFI_STATUS getMemoryMap(MEMORY_MAP* map) {
         EFI_MEMORY_DESCRIPTOR desc = memMap[i];
         UINT32 type = desc.Type;
         
-        if (type == EfiBootServicesCode || type == EfiBootServicesData) {
+        if (type == EfiBootServicesCode || type == EfiBootServicesData || type == EfiRuntimeServicesCode || type == EfiRuntimeServicesData) {
             type = EfiConventionalMemory;
         }
 

@@ -117,7 +117,7 @@ EFI_STATUS map_core_stacks(PAGETABLEENTRY (*pml4)[512], UINT64 maxCpu) {
     EFI_STATUS Status;
     UINT64 coreStackVaddr = (UINT64)(-(INT64)PAGE_SIZE);
 
-    for (UINT64 i = 0; i < maxCpu; i++) {
+    for (UINT64 i = 0; i < (maxCpu * 3) + 1; i++) {
         void* coreStack;
         Status = uefi_call_wrapper(BS->AllocatePages, 4, AllocateAnyPages, EfiLoaderData, 1, &coreStack);
         if (EFI_ERROR(Status)) return Status;

@@ -39,7 +39,7 @@ typedef struct __attribute__((packed)) {
 } INTERRUPT_FRAME;
 
 void idtInit(void);
-void idtSetEntry(uint8_t num, void (*handler)(void), uint8_t type_attr);
+void idtSetEntry(uint8_t num, void (*handler)(void), uint8_t type_attr, uint8_t ist);
 void idtLoad(void);
 
 #endif // IDT_H

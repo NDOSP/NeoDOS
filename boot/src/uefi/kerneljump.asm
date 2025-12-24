@@ -9,6 +9,7 @@ section .text
     kernelJump_start:
     kernelJump:
         mov cr3, rsi
+        cli
         jmp rdi
     kernelJump_end:
 

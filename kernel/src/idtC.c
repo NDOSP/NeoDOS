@@ -32,12 +32,12 @@ void idtLoad(void) {
     asm volatile("lidt %0" : : "m"(idtp));
 }
 
-void idtSetEntry(uint8_t num, void (*handler)(void), uint8_t type_attr) {
+void idtSetEntry(uint8_t num, void (*handler)(void), uint8_t type_attr, uint8_t ist) {
     uint64_t addr = (uint64_t)handler;
-    
+
     idt[num].offset_low = addr & 0xFFFF;
     idt[num].selector = 0x08;
-    idt[num].ist = 0;
+    idt[num].ist = ist & 0x7;
     idt[num].type_attr = type_attr;
     idt[num].offset_mid = (addr >> 16) & 0xFFFF;
     idt[num].offset_high = (addr >> 32) & 0xFFFFFFFF;
@@ -47,29 +47,29 @@ void idtSetEntry(uint8_t num, void (*handler)(void), uint8_t type_attr) {
 void idtInit(void) {
     for (int i = 0; i < 32; i++) {
         switch (i) {
-            case 0: idtSetEntry(0, idt0Stub, 0x8E); break;
-            case 1: idtSetEntry(1, idt1Stub, 0x8E); break;
-            case 2: idtSetEntry(2, idt2Stub, 0x8E); break;
-            case 3: idtSetEntry(3, idt3Stub, 0x8E); break;
-            case 4: idtSetEntry(4, idt4Stub, 0x8E); break;
-            case 5: idtSetEntry(5, idt5Stub, 0x8E); break;
-            case 6: idtSetEntry(6, idt6Stub, 0x8E); break;
-            case 7: idtSetEntry(7, idt7Stub, 0x8E); break;
-            case 8: idtSetEntry(8, idt8Stub, 0x8E); break;
-            case 9: idtSetEntry(9, idt9Stub, 0x8E); break;
-            case 10: idtSetEntry(10, idt10Stub, 0x8E); break;
-            case 11: idtSetEntry(11, idt11Stub, 0x8E); break;
-            case 12: idtSetEntry(12, idt12Stub, 0x8E); break;
-            case 13: idtSetEntry(13, idt13Stub, 0x8E); break;
-            case 14: idtSetEntry(14, idt14Stub, 0x8E); break;
-            case 15: idtSetEntry(15, idt15Stub, 0x8E); break;
-            case 16: idtSetEntry(16, idt16Stub, 0x8E); break;
-            case 17: idtSetEntry(17, idt17Stub, 0x8E); break;
-            case 18: idtSetEntry(18, idt18Stub, 0x8E); break;
-            case 19: idtSetEntry(19, idt19Stub, 0x8E); break;
-            case 20: idtSetEntry(20, idt20Stub, 0x8E); break;
-            case 21: idtSetEntry(21, idt21Stub, 0x8E); break;
-            default: idtSetEntry(i, idtDefaultStub, 0x8E); break;
+            case 0: idtSetEntry(0, idt0Stub, 0x8E, 0); break;
+            case 1: idtSetEntry(1, idt1Stub, 0x8E, 0); break;
+            case 2: idtSetEntry(2, idt2Stub, 0x8E, 0); break;
+            case 3: idtSetEntry(3, idt3Stub, 0x8E, 0); break;
+            case 4: idtSetEntry(4, idt4Stub, 0x8E, 0); break;
+            case 5: idtSetEntry(5, idt5Stub, 0x8E, 0); break;
+            case 6: idtSetEntry(6, idt6Stub, 0x8E, 0); break;
+            case 7: idtSetEntry(7, idt7Stub, 0x8E, 0); break;
+            case 8: idtSetEntry(8, idt8Stub, 0x8E, 1); break;
+            case 9: idtSetEntry(9, idt9Stub, 0x8E, 0); break;
+            case 10: idtSetEntry(10, idt10Stub, 0x8E, 0); break;
+            case 11: idtSetEntry(11, idt11Stub, 0x8E, 0); break;
+            case 12: idtSetEntry(12, idt12Stub, 0x8E, 0); break;
+            case 13: idtSetEntry(13, idt13Stub, 0x8E, 0); break;
+            case 14: idtSetEntry(14, idt14Stub, 0x8E, 2); break;
+            case 15: idtSetEntry(15, idt15Stub, 0x8E, 0); break;
+            case 16: idtSetEntry(16, idt16Stub, 0x8E, 0); break;
+            case 17: idtSetEntry(17, idt17Stub, 0x8E, 0); break;
+            case 18: idtSetEntry(18, idt18Stub, 0x8E, 0); break;
+            case 19: idtSetEntry(19, idt19Stub, 0x8E, 0); break;
+            case 20: idtSetEntry(20, idt20Stub, 0x8E, 0); break;
+            case 21: idtSetEntry(21, idt21Stub, 0x8E, 0); break;
+            default: idtSetEntry(i, idtDefaultStub, 0x8E, 0); break;
         }
     }
 
