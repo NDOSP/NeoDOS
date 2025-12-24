@@ -16,7 +16,7 @@
       {
         "name":"Scale",
         "type":"R_U64",
-        "value":2
+        "value":8
       }
     ]
   },
