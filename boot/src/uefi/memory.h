@@ -4,8 +4,11 @@
 #include <efi.h>
 #include <efilib.h>
 
-#define KB(x) x*1024
-#define MB(x) KB(x)*1024
+#define RECURSIVE_PML4_IDX 505
+
+#define KB(x) ((x) * 1024ULL)
+#define MB(x) (KB(x) * 1024ULL)
+#define GB(x) (MB(x) * 1024ULL)
 
 #define PAGE_SIZE 4096
 

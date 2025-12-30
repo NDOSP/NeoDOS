@@ -14,6 +14,8 @@ EFI_STATUS initPage(PAGETABLEENTRY (**address)[512]) {
     *address = (PAGETABLEENTRY (*)[512])phys;
     SetMem((VOID*)**address, PAGE_SIZE, 0x00);
 
+    Print(L"Allocated 0x%lX for page tables\n", phys);
+
     return EFI_SUCCESS;
 }
 
@@ -37,27 +39,28 @@ EFI_STATUS addPage(PAGETABLEENTRY (*pml4)[512], UINT64 vaddr, UINT64 paddr, UINT
         if (EFI_ERROR(Status)) return Status;
 
         (*pml4)[pml4_i] = ((UINT64)pdpt & ENTRY_ADDR_MASK) | ENTRY_PRESENT | ENTRY_RW;
-    } else {
-        pdpt = (PAGETABLEENTRY (*)[512])((*pml4)[pml4_i] & ENTRY_ADDR_MASK);
     }
+    
+    pdpt = (PAGETABLEENTRY (*)[512])((*pml4)[pml4_i] & ENTRY_ADDR_MASK);
 
     if (!((*pdpt)[pdpt_i] & ENTRY_PRESENT)) {
         Status = initPage(&pd);
         if (EFI_ERROR(Status)) return Status;
 
         (*pdpt)[pdpt_i] = ((UINT64)pd & ENTRY_ADDR_MASK) | ENTRY_PRESENT | ENTRY_RW;
-    } else {
-        pd = (PAGETABLEENTRY (*)[512])((*pdpt)[pdpt_i] & ENTRY_ADDR_MASK);
     }
+    
+    pd = (PAGETABLEENTRY (*)[512])((*pdpt)[pdpt_i] & ENTRY_ADDR_MASK);
+    
 
     if (!((*pd)[pd_i] & ENTRY_PRESENT)) {
         Status = initPage(&pt);
         if (EFI_ERROR(Status)) return Status;
 
         (*pd)[pd_i] = ((UINT64)pt & ENTRY_ADDR_MASK) | ENTRY_PRESENT | ENTRY_RW;
-    } else {
-        pt = (PAGETABLEENTRY (*)[512])((*pd)[pd_i] & ENTRY_ADDR_MASK);
     }
+
+    pt = (PAGETABLEENTRY (*)[512])((*pd)[pd_i] & ENTRY_ADDR_MASK);
 
     (*pt)[pt_i] = (paddr & ENTRY_ADDR_MASK) | flags | ENTRY_PRESENT;
 

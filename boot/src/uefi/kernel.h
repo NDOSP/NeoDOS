@@ -10,6 +10,8 @@
 #include "acpi.h"
 #include "nff.h"
 
+#define BOOTSTRAP_MEMORY_PAGES MB(1)/PAGE_SIZE
+
 typedef struct {
     UINT64 paddr;
     UINT64 vaddr;
@@ -32,6 +34,8 @@ typedef struct {
     RSDP* rsdp;
     FONT_INFO* font;
     UINT64 fontScale;
+    UINTN bootstrapMemoryAddress;
+    UINT64 bootstrapMemoryPages;
     MEMORY_MAP map;
 } BOOT_INFO;
 

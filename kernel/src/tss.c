@@ -29,8 +29,8 @@ void initTss(void) {
         tss[cpuId].rsp2 = 0;
         tss[cpuId].io_map_base = sizeof(TSS);
 
-        tss[cpuId].ist1 = 0xFFFFFFFFFFFFFFF0 - (cpuId * 3 + 1) * PAGE_SIZE - PAGE_SIZE; // #DF
-        tss[cpuId].ist2 = 0xFFFFFFFFFFFFFFF0 - (cpuId * 3 + 1) * PAGE_SIZE - 2 * PAGE_SIZE; // #PF
+        tss[cpuId].ist1 = 0xFFFFFFFFFFFFFFF0 - (cpuId * 3 + 1) * 2 * PAGE_SIZE - PAGE_SIZE; // #DF
+        tss[cpuId].ist2 = 0xFFFFFFFFFFFFFFF0 - (cpuId * 3 + 1) * 2 * PAGE_SIZE - 2 * PAGE_SIZE; // #PF
         tss[cpuId].ist3 = 0;
         tss[cpuId].ist4 = 0;
         tss[cpuId].ist5 = 0;

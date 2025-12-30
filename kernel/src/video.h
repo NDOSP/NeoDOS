@@ -22,5 +22,7 @@ void drawString(const char* str, uint32_t x, uint32_t y, VideoColor color);
 void drawOutput(const char* str, VideoColor color);
 void cleanScreen(VideoColor color);
 void SetCursorPos(uint32_t x, uint32_t y);
+void drawHex64(uint64_t value, VideoColor color);
+void drawHex8(uint8_t value, VideoColor color);
 
 #endif // VIDEO_H

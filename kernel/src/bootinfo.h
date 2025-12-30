@@ -83,6 +83,8 @@ typedef struct {
     Rsdp* rsdp;
     FontInfo* font;
     uint64_t fontScale;
+    void* bootstrapMemoryAddress;
+    uint64_t bootstrapMemoryPages;
     MemoryMap map;
 } BootInfo;
 

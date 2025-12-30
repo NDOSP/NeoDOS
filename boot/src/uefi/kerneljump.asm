@@ -13,4 +13,4 @@ section .text
         jmp rdi
     kernelJump_end:
 
-    times 4096 - ($ - $$) db 0
+    times 4096 - ($ - $$) db 0xCC

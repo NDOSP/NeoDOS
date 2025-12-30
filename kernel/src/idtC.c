@@ -77,9 +77,14 @@ void idtInit(void) {
 }
 
 void idtHandler(INTERRUPT_FRAME* frame) {
+    SetCursorPos(0, 0);
     cleanScreen(red);
-    char buffer[4] = {'I', '0' + (frame->interruptNumber / 10), '0' + (frame->interruptNumber % 10), '\0'};
-    drawString(buffer, 0, 0, white);
+    
+    drawOutput("I", white);
+    drawHex8(frame->interruptNumber, white);
+    drawOutput("\n", white);
+
+    drawString("#", bInfo.fb.fbWidth - bInfo.font->fontWidth * bInfo.fontScale, bInfo.fb.fbHeight - bInfo.font->fontHeight * bInfo.fontScale, white);
 
     if (frame->interruptNumber < 32) {
         asm volatile("hlt");

@@ -116,6 +116,35 @@ void cleanScreen(VideoColor color) {
     }
 }
 
+void drawHex64(uint64_t value, VideoColor color) {
+    char buf[19]; 
+    buf[0] = '0';
+    buf[1] = 'x';
+
+    for (int i = 0; i < 16; i++) {
+        uint8_t nibble = (value >> ((15 - i) * 4)) & 0xF;
+        buf[2 + i] = (nibble < 10)
+            ? ('0' + nibble)
+            : ('A' + nibble - 10);
+    }
+
+    buf[18] = '\0';
+    drawOutput(buf, color);
+}
+
+void drawHex8(uint8_t value, VideoColor color) {
+    char buf[3];
+
+    for (int i = 0; i < 2; i++) {
+        uint8_t nibble = (value >> ((1 - i) * 4)) & 0xF;
+        buf[i] = (nibble < 10)
+            ? ('0' + nibble)
+            : ('A' + nibble - 10);
+    }
+
+    buf[2] = '\0';
+    drawOutput(buf, color);
+}
 
 VideoColor black = { .blue = 0, .green = 0, .red = 0 };
 VideoColor red = { .blue = 0, .green = 0, .red = 255 };
