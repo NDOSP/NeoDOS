@@ -90,7 +90,6 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* Syste
 
     Status = initPage(&bInfo.pml4);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
-    Print(L"PML4 address: 0x%lX\n", bInfo.pml4);
 
     (*bInfo.pml4)[RECURSIVE_PML4_IDX] = ((UINTN)bInfo.pml4 & ENTRY_ADDR_MASK) | ENTRY_PRESENT | ENTRY_RW;
 
@@ -100,7 +99,6 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* Syste
     
     for (UINTN i = 0; i < BOOTSTRAP_MEMORY_PAGES; i++) {
         Status = addPage(bInfo.pml4, bInfo.bootstrapMemoryAddress + i * PAGE_SIZE, bInfo.bootstrapMemoryAddress + i * PAGE_SIZE, ENTRY_PRESENT | ENTRY_RW | ENTRY_EXEC_DISABLE);
-        Print(L"Allocated Bootstrap memory at: 0x%lX\n", bInfo.bootstrapMemoryAddress + i * PAGE_SIZE);
         if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
     }
 

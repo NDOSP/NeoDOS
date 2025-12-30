@@ -5,7 +5,7 @@ CC := gcc
 AS := nasm
 LD := ld
 
-CFLAGS := -ffreestanding -O2 -Wall -Wextra -nostdlib -nostartfiles
+CFLAGS := -ffreestanding -O2 -Wall -Wextra -nostdlib -nostartfiles -Isrc/
 ASFLAGS := -f elf64
 LDFLAGS := -T linker.ld -nostdlib
 

@@ -77,7 +77,6 @@ static inline void refreshTLB(void) {
     );
 }
 
-
 void* addPageBootstrap(uint64_t vaddr, uint64_t paddr, uint64_t flags) {
     if (vaddr % PAGE_SIZE != 0) return NULL;
     if (paddr % PAGE_SIZE != 0) return NULL;

@@ -146,6 +146,14 @@ void drawHex8(uint8_t value, VideoColor color) {
     drawOutput(buf, color);
 }
 
+void drawRect(uint32_t x, uint32_t y, uint32_t width, uint32_t height, VideoColor color) {
+    for (uint32_t row = 0; row < height; row++) {
+        for (uint32_t col = 0; col < width; col++) {
+            putPixel(x + col, y + row, color);
+        }
+    }
+}
+
 VideoColor black = { .blue = 0, .green = 0, .red = 0 };
 VideoColor red = { .blue = 0, .green = 0, .red = 255 };
 VideoColor blue = { .blue = 255, .green = 0, .red = 0 };

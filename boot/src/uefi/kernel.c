@@ -147,7 +147,7 @@ EFI_STATUS mapKernelSpace(PAGETABLEENTRY (*pml4)[512], KERNEL_INFO* kInfo, VIDEO
     }
 
     if (fb) {
-        UINT64 fbSize = fb->fbSize;
+        UINT64 fbSize = fb->fbSize * 4;
         for (UINT64 offset = 0; offset < fbSize; offset += PAGE_SIZE) {
             Status = addPage(pml4, (UINT64)(fb->fbPtr + offset), (UINT64)(fb->fbPtr + offset), ENTRY_PRESENT | ENTRY_RW | ENTRY_CACHE_DISABLE | ENTRY_EXEC_DISABLE); 
             if (EFI_ERROR(Status)) return Status;

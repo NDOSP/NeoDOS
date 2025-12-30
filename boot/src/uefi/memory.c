@@ -14,8 +14,6 @@ EFI_STATUS initPage(PAGETABLEENTRY (**address)[512]) {
     *address = (PAGETABLEENTRY (*)[512])phys;
     SetMem((VOID*)**address, PAGE_SIZE, 0x00);
 
-    Print(L"Allocated 0x%lX for page tables\n", phys);
-
     return EFI_SUCCESS;
 }
 
