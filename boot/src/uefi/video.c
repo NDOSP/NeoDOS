@@ -30,8 +30,7 @@ EFI_STATUS getPreferredResolution(OUT VIDEO_INFO* info) {
         EFI_HANDLE deviceHandle = Handles[i];
         EFI_EDID_DISCOVERED_PROTOCOL* edidProtocol = NULL;
         
-        Status = uefi_call_wrapper(gBS->HandleProtocol, 3, deviceHandle, 
-                                   &gEfiEdidDiscoveredProtocolGuid, (VOID**)&edidProtocol);
+        Status = uefi_call_wrapper(gBS->HandleProtocol, 3, deviceHandle, &gEfiEdidDiscoveredProtocolGuid, (VOID**)&edidProtocol);
         if (EFI_ERROR(Status) || edidProtocol == NULL) {
             continue;
         }
@@ -47,9 +46,6 @@ EFI_STATUS getPreferredResolution(OUT VIDEO_INFO* info) {
                 if (dtd[0] != 0 || dtd[1] != 0) {
                     UINT16 xRes = dtd[2] | ((dtd[4] & 0xF0) << 4);
                     UINT16 yRes = dtd[5] | ((dtd[7] & 0xF0) << 4);
-                    
-                    xRes = dtd[2] | ((UINT16)(dtd[4] & 0xF0) << 4);
-                    yRes = dtd[5] | ((UINT16)(dtd[7] & 0xF0) << 4);
                     
                     Print(L"INFO: (video) Preferred resolution by EDID: %dx%d\n", xRes, yRes);
                     
@@ -77,6 +73,19 @@ EFI_STATUS getPreferredResolution(OUT VIDEO_INFO* info) {
     return Result;
 }
 
+BOOLEAN modeMatches(EFI_GRAPHICS_OUTPUT_MODE_INFORMATION* info, VIDEO_INFO* vInfo) {
+    if (vInfo->resolution.height > info->VerticalResolution || vInfo->resolution.width > info->HorizontalResolution) return FALSE;
+    if (info->HorizontalResolution < vInfo->resolution.width) return FALSE;
+    if (info->VerticalResolution < vInfo->resolution.height) return FALSE;
+    switch (info->PixelFormat) {
+        case PixelRedGreenBlueReserved8BitPerColor:
+        case PixelBlueGreenRedReserved8BitPerColor:
+            return TRUE;
+        default:
+            return FALSE;
+    }
+}
+
 EFI_STATUS setVideoMode(VIDEO_INFO vInfo, VIDEO_FRAMEBUFFER* fb) {
     EFI_STATUS Status;
     EFI_GRAPHICS_OUTPUT_PROTOCOL* gop = NULL;
@@ -89,15 +98,9 @@ EFI_STATUS setVideoMode(VIDEO_INFO vInfo, VIDEO_FRAMEBUFFER* fb) {
         EFI_GRAPHICS_OUTPUT_MODE_INFORMATION *info;
         UINTN sizeOfInfo;
         Status = uefi_call_wrapper(gop->QueryMode, 4, gop, modeId, &sizeOfInfo, &info);
+        if (EFI_ERROR(Status)) continue;
 
-        if (vInfo.resolution.height > info->VerticalResolution || vInfo.resolution.width > info->HorizontalResolution) continue;
-        switch (info->PixelFormat) {
-            case PixelBlueGreenRedReserved8BitPerColor:
-            case PixelRedGreenBlueReserved8BitPerColor:
-                break;
-            default:
-                continue;
-        }
+        if (!modeMatches(info, &vInfo)) continue;;
 
         Print(L"INFO: (video) Framebuffer info:\n\tFramebuffer: %lX\n\tResolution: %dx%d\n\tScan line: %d\n\tPixel format: %d\n", gop->Mode->FrameBufferBase, info->HorizontalResolution, info->VerticalResolution, info->PixelsPerScanLine, info->PixelFormat);
         fb->fbHeight = info->VerticalResolution;

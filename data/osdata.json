@@ -27,7 +27,7 @@
       {
         "name":"KernelLocation",
         "type":"R_STR16",
-        "value":"\\NEODOS\\NEOKRN.ELF"
+        "value":"\\NEODOS\\NEOKRN.ELF\u0000"
       },
       {
         "name":"MaxCPU",
@@ -37,7 +37,7 @@
       {
         "name":"FontLocation",
         "type":"R_STR16",
-        "value":"\\NEODOS\\FONT.NFF"
+        "value":"\\NEODOS\\FONT.NFF\u0000"
       }
     ]
   }

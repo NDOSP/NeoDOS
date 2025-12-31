@@ -5,23 +5,25 @@ UINTN align_up(UINTN size, UINTN align) {
 }
 
 EFI_STATUS initPage(PAGETABLEENTRY (**address)[512]) {
+    if (address == NULL) return EFI_INVALID_PARAMETER;
     EFI_STATUS Status;
     EFI_PHYSICAL_ADDRESS phys;
 
-    Status = uefi_call_wrapper(gBS->AllocatePages, 4, AllocateAnyPages, EfiLoaderData, PAGE_SIZE/PAGE_SIZE, &phys);
+    Status = uefi_call_wrapper(gBS->AllocatePages, 4, AllocateAnyPages, EfiLoaderData, 1, &phys);
     if (EFI_ERROR(Status)) return Status;
 
     *address = (PAGETABLEENTRY (*)[512])phys;
-    SetMem((VOID*)**address, PAGE_SIZE, 0x00);
+    SetMem(*address, EFI_PAGE_SIZE, 0);
 
     return EFI_SUCCESS;
 }
 
 EFI_STATUS addPage(PAGETABLEENTRY (*pml4)[512], UINT64 vaddr, UINT64 paddr, UINT64 flags) {
     EFI_STATUS Status;
+    if (pml4 == NULL) return EFI_INVALID_PARAMETER;
 
-    if (paddr % PAGE_SIZE != 0) return EFI_INVALID_PARAMETER;
-    if (vaddr % PAGE_SIZE != 0) return EFI_INVALID_PARAMETER;
+    if (paddr % EFI_PAGE_SIZE != 0) return EFI_INVALID_PARAMETER;
+    if (vaddr % EFI_PAGE_SIZE != 0) return EFI_INVALID_PARAMETER;
 
     PAGETABLEENTRY (*pdpt)[512];
     PAGETABLEENTRY (*pd)[512];
@@ -66,25 +68,29 @@ EFI_STATUS addPage(PAGETABLEENTRY (*pml4)[512], UINT64 vaddr, UINT64 paddr, UINT
 }
 
 EFI_STATUS getMemoryMap(MEMORY_MAP* map) {
+    if (map == NULL) return EFI_INVALID_PARAMETER;
+
     EFI_MEMORY_DESCRIPTOR* memMap;
     UINTN descriptorSize;
     UINT32 descriptorVersion;
     
     memMap = LibMemoryMap(&map->numberOfEntries, &map->mapKey, &descriptorSize, &descriptorVersion);
+    if (memMap == NULL) return EFI_NOT_FOUND;
+
     map->descriptorSize = descriptorSize;
     map->descriptorVersion = descriptorVersion;
 
     UINTN outIndex = 0;
     for (UINTN i = 0; i < map->numberOfEntries; i++) {
-        EFI_MEMORY_DESCRIPTOR desc = memMap[i];
-        UINT32 type = desc.Type;
+        EFI_MEMORY_DESCRIPTOR* desc = (EFI_MEMORY_DESCRIPTOR*)((UINT8*)memMap + i * descriptorSize);
+        UINT32 type = desc->Type;
         
-        if (type == EfiBootServicesCode || type == EfiBootServicesData || type == EfiRuntimeServicesCode || type == EfiRuntimeServicesData) {
+        if (type == EfiBootServicesCode || type == EfiBootServicesData) {
             type = EfiConventionalMemory;
         }
 
-        UINT64 start = desc.PhysicalStart;
-        UINT64 size = desc.NumberOfPages * 4096;
+        UINT64 start = desc->PhysicalStart;
+        UINT64 size = desc->NumberOfPages * EFI_PAGE_SIZE;
 
         if (outIndex > 0 && map->entries[outIndex - 1].type == EfiConventionalMemory && type == EfiConventionalMemory && map->entries[outIndex - 1].address + map->entries[outIndex - 1].size == start) {
             map->entries[outIndex - 1].size += size;

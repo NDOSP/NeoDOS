@@ -75,9 +75,9 @@ EFI_STATUS loadElf(CHAR16* path, KERNEL_INFO* info) {
             Print(L"WARNING: (kernel) Kernel segment at 0x%lX might be too large\n", phdr.p_offset);
         }
 
-        UINT64 pageOffset = phdr.p_vaddr & (PAGE_SIZE - 1);
-        UINT64 totalSize  = align_up(pageOffset + phdr.p_memsz, PAGE_SIZE);
-        UINTN pagesToAllocate = totalSize / PAGE_SIZE;
+        UINT64 pageOffset = phdr.p_vaddr & (EFI_PAGE_SIZE - 1);
+        UINT64 totalSize  = align_up(pageOffset + phdr.p_memsz, EFI_PAGE_SIZE);
+        UINTN pagesToAllocate = totalSize / EFI_PAGE_SIZE;
         UINT8* loadBuffer;
         Status = uefi_call_wrapper(gBS->AllocatePages, 4, AllocateAnyPages, EfiLoaderData, pagesToAllocate, (VOID*)&loadBuffer);
         if (EFI_ERROR(Status)) return Status;
@@ -92,7 +92,7 @@ EFI_STATUS loadElf(CHAR16* path, KERNEL_INFO* info) {
             Print(L"INFO: (kernel) Cleared .bss [%ld..%ld) = %ld bytes\n", segmentFileSize, memSize, bssSize);
         }
 
-        info->segmentMapping[info->segmentCount].vaddr = phdr.p_vaddr & ~(PAGE_SIZE - 1);
+        info->segmentMapping[info->segmentCount].vaddr = phdr.p_vaddr & ~(EFI_PAGE_SIZE - 1);
         info->segmentMapping[info->segmentCount].paddr = (UINT64)loadBuffer;
         info->segmentMapping[info->segmentCount].size  = totalSize;
         info->segmentMapping[info->segmentCount].flags = phdr.p_flags;
@@ -101,7 +101,7 @@ EFI_STATUS loadElf(CHAR16* path, KERNEL_INFO* info) {
         if (phdr.p_flags == PF_R) {
             Print(L"INFO: (kernel) Found .bootinfo Program Segment at (paddr: 0x%lX, vaddr: 0x%lX)\n", (UINT64)loadBuffer, phdr.p_vaddr);
             info->bootInfo.flags = phdr.p_flags;
-            info->bootInfo.vaddr = phdr.p_vaddr & ~(PAGE_SIZE - 1);
+            info->bootInfo.vaddr = phdr.p_vaddr & ~(EFI_PAGE_SIZE - 1);
             info->bootInfo.paddr = (UINT64)loadBuffer;
             info->bootInfo.size = memSize;
         }
@@ -115,14 +115,14 @@ EFI_STATUS loadElf(CHAR16* path, KERNEL_INFO* info) {
 
 EFI_STATUS map_core_stacks(PAGETABLEENTRY (*pml4)[512], UINT64 maxCpu) {
     EFI_STATUS Status;
-    UINT64 coreStackVaddr = (UINT64)(-(INT64)PAGE_SIZE);
+    UINT64 coreStackVaddr = (UINT64)(-(INT64)EFI_PAGE_SIZE);
 
     for (UINT64 i = 0; i < (maxCpu * 3) + 1; i++) {
         void* coreStack;
         Status = uefi_call_wrapper(BS->AllocatePages, 4, AllocateAnyPages, EfiLoaderData, 1, &coreStack);
         if (EFI_ERROR(Status)) return Status;
 
-        Status = addPage(pml4, coreStackVaddr - i * 2 * PAGE_SIZE, (UINT64)coreStack, ENTRY_PRESENT | ENTRY_RW | ENTRY_EXEC_DISABLE);
+        Status = addPage(pml4, coreStackVaddr - i * 2 * EFI_PAGE_SIZE, (UINT64)coreStack, ENTRY_PRESENT | ENTRY_RW | ENTRY_EXEC_DISABLE);
         if (EFI_ERROR(Status)) return Status;
     }
 
@@ -140,7 +140,7 @@ EFI_STATUS mapKernelSpace(PAGETABLEENTRY (*pml4)[512], KERNEL_INFO* kInfo, VIDEO
         if (!(mapping->flags & PF_X)) flags |= ENTRY_EXEC_DISABLE;
         if (mapping->flags & PF_W) flags |= ENTRY_RW;
 
-        for (UINT64 offset = 0; offset < mapping->size; offset += PAGE_SIZE) {
+        for (UINT64 offset = 0; offset < mapping->size; offset += EFI_PAGE_SIZE) {
             Status = addPage(pml4, mapping->vaddr + offset, mapping->paddr + offset, ENTRY_PRESENT | flags);
             if (EFI_ERROR(Status)) return Status;
         }
@@ -148,7 +148,7 @@ EFI_STATUS mapKernelSpace(PAGETABLEENTRY (*pml4)[512], KERNEL_INFO* kInfo, VIDEO
 
     if (fb) {
         UINT64 fbSize = fb->fbSize * 4;
-        for (UINT64 offset = 0; offset < fbSize; offset += PAGE_SIZE) {
+        for (UINT64 offset = 0; offset < fbSize; offset += EFI_PAGE_SIZE) {
             Status = addPage(pml4, (UINT64)(fb->fbPtr + offset), (UINT64)(fb->fbPtr + offset), ENTRY_PRESENT | ENTRY_RW | ENTRY_CACHE_DISABLE | ENTRY_EXEC_DISABLE); 
             if (EFI_ERROR(Status)) return Status;
         }
@@ -156,9 +156,9 @@ EFI_STATUS mapKernelSpace(PAGETABLEENTRY (*pml4)[512], KERNEL_INFO* kInfo, VIDEO
 
     if (font) {
         UINT64 fontStart = (UINT64)font;
-        UINT64 fontSizePages = (sizeof(FONT_INFO) + font->glyphCount * sizeof(FONT_GLYPH) + font->glyphCount * font->bytesPerGlyph + PAGE_SIZE - 1) / PAGE_SIZE;
+        UINT64 fontSizePages = (sizeof(FONT_INFO) + font->glyphCount * sizeof(FONT_GLYPH) + font->glyphCount * font->bytesPerGlyph + EFI_PAGE_SIZE - 1) / EFI_PAGE_SIZE;
 
-        for (UINT64 offset = 0; offset < fontSizePages * PAGE_SIZE; offset += PAGE_SIZE) {
+        for (UINT64 offset = 0; offset < fontSizePages * EFI_PAGE_SIZE; offset += EFI_PAGE_SIZE) {
             Status = addPage(pml4, fontStart + offset, fontStart + offset, ENTRY_PRESENT | ENTRY_EXEC_DISABLE);
             if (EFI_ERROR(Status)) return Status;
         }

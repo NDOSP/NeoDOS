@@ -20,7 +20,7 @@ typedef union {
 typedef struct ConfigNode ConfigNode;
 
 struct ConfigNode {
-    const CHAR8* name;
+    CHAR8* name;
     EntryType entryType;
 
     UINT8* value;
@@ -30,7 +30,7 @@ struct ConfigNode {
     ConfigNode* child;
 };
 
-ConfigNode ConfigNodeInit(const CHAR8 *name, EntryType entryType, UINT8 *value, UINTN valueSize);
+ConfigNode* ConfigNodeInit(CHAR8 *name, EntryType entryType, UINT8 *value, UINTN valueSize);
 void ConfigNodeAddChild(ConfigNode *self, ConfigNode *child);
 const ConfigNode* ConfigNodeFindAny(const ConfigNode *self, const CHAR8 *name);
 BOOLEAN ConfigNodeGetValue(const ConfigNode *node, EntryValue *out);
@@ -39,6 +39,6 @@ UINT64 ConfigNodeGetU64(ConfigNode *root, const CHAR8 *path, UINT64 def);
 CHAR8* ConfigNodeGetStr8(ConfigNode *root, const CHAR8 *path, CHAR8 *def);
 CHAR16* ConfigNodeGetStr16(ConfigNode *root, const CHAR8 *path, CHAR16 *def);
 
-EFI_STATUS getConfig(CHAR16* path, ConfigNode** output);
+EFI_STATUS getConfig(CHAR16* path, ConfigNode*** output);
 
 #endif // NDR_BOOT_H

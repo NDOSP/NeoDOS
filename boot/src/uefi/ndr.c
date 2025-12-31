@@ -37,24 +37,46 @@ typedef struct {
     CHAR8* data;
 } REGISTRY_ENTRY;
 
-ConfigNode ConfigNodeInit(const CHAR8* name, EntryType entryType, UINT8* value, UINTN valueSize) {
-    ConfigNode node;
-    node.name = name;
-    node.entryType = entryType;
-    node.value = value;
-    node.valueSize = valueSize;
-    node.next = NULL;
-    node.child = NULL;
+ConfigNode* ConfigNodeInit(CHAR8* name, EntryType entryType, UINT8* value, UINTN valueSize) {
+    ConfigNode* node = AllocatePool(sizeof(ConfigNode));
+    if (!node) return NULL;
+
+    node->name = name;
+    node->entryType = entryType;
+    node->value = value;
+    node->valueSize = valueSize;
+    node->next = NULL;
+    node->child = NULL;
+
     return node;
 }
 
+VOID ConfigNodeFreeTree(ConfigNode* node) {
+    if (node == NULL) return;
+
+    ConfigNode* child = node->child;
+    while (child) {
+        ConfigNode* next = child->next;
+        ConfigNodeFreeTree(child);
+        child = next;
+    }
+
+    if (node->name) FreePool(node->name);
+    if (node->value) FreePool(node->value);
+    FreePool(node);
+}
+
 void ConfigNodeAddChild(ConfigNode* self, ConfigNode* child) {
+    if (!self || !child) return;
+
+    child->next = NULL;
+
     if (!self->child) {
         self->child = child;
         return;
     }
 
-    ConfigNode *last = self->child;
+    ConfigNode* last = self->child;
     while (last->next)
         last = last->next;
 
@@ -87,14 +109,14 @@ const ConfigNode* ConfigNodeFindAny(const ConfigNode* self, const CHAR8* name) {
 }
 
 BOOLEAN ConfigNodeGetValue(const ConfigNode* node, EntryValue* out) {
+    if (!node || !out) return FALSE;
+
     switch (node->entryType) {
 
         case T_NUM: {
-            if (node->valueSize < 8) return FALSE;
-
+            if (node->valueSize < sizeof(UINT64)) return FALSE;
             UINT64 num = 0;
-            CopyMem(&num, node->value, 8);
-
+            CopyMem(&num, node->value, sizeof(UINT64));
             out->num = num;
             return TRUE;
         }
@@ -102,25 +124,14 @@ BOOLEAN ConfigNodeGetValue(const ConfigNode* node, EntryValue* out) {
         case T_UTF8: {
             if (node->value == NULL || node->valueSize == 0) return FALSE;
 
-            CHAR8 *copy = (CHAR8*)AllocatePool(node->valueSize + sizeof(CHAR8));
-            if (!copy) return FALSE;
-
-            CopyMem(copy, node->value, node->valueSize);
-            copy[node->valueSize] = '\0';
-            out->str8 = copy;
+            out->str8 = (CHAR8*)node->value;
             return TRUE;
         }
 
         case T_UTF16: {
             if (node->valueSize == 0 || (node->valueSize & 1)) return FALSE;
-            UINTN charCount = node->valueSize / sizeof(CHAR16);
-            CHAR16 *copy = (CHAR16*)AllocatePool(node->valueSize + sizeof(CHAR16));
-            if (!copy) return FALSE;
 
-            CopyMem(copy, node->value, node->valueSize);
-            copy[charCount] = L'\0';
-
-            out->str16 = copy;
+            out->str16 = (CHAR16*)node->value;
             return TRUE;
         }
 
@@ -131,7 +142,8 @@ BOOLEAN ConfigNodeGetValue(const ConfigNode* node, EntryValue* out) {
 }
 
 BOOLEAN ConfigNodeGetValueByPath(const ConfigNode *root, const CHAR8 *path, EntryValue *out) {
-    Print(L"INFO: (config) Root name: %a\n", root->name);
+    if (!root || !path || !out) return FALSE;
+
     const ConfigNode *current = root;
     const CHAR8 *start = path;
     const CHAR8 *p = path;
@@ -139,58 +151,32 @@ BOOLEAN ConfigNodeGetValueByPath(const ConfigNode *root, const CHAR8 *path, Entr
     while (TRUE) {
         if (*p == '/' || *p == '\0') {
             UINTN len = p - start;
-            if (len == 0) {
-                if (*p == '/') {
-                    start = p + 1;
-                    continue;
-                }
-                return FALSE;
-            }
+            if (len > 0) {
+                const ConfigNode *child = current->child;
+                const ConfigNode *found = NULL;
 
-            CHAR8* namebuf = (CHAR8*)AllocatePool(len + 1);
-            if (!namebuf) return FALSE;
-            
-            CopyMem(namebuf, start, len);
-            namebuf[len] = '\0';
-
-            const ConfigNode* found = NULL;
-            ConfigNode* child = current->child;
-            while (child) {
-                Print(L"INFO: (config) child=0x%lX, child->name=0x%lX, namebuf=0x%lX\n", child, child->name, namebuf);
-
-                if (!child->name) {
-                    Print(L"WARNING: child->name is NULL!\n");
+                while (child) {
+                    if (child->name && strncmpa(child->name, start, len) == 0 && child->name[len] == '\0') {
+                        found = child;
+                        break;
+                    }
                     child = child->next;
-                    continue;
                 }
 
-                if (!namebuf) {
-                    Print(L"ERROR: namebuf is NULL!\n");
-                    break;
+                if (!found) {
+                    Print(L"WARNING: (config) Component %a not found\n", start);
+                    return FALSE;
                 }
 
-                if (strcmpa(child->name, namebuf) == 0) {
-                    found = child;
-                    break;
-                }
-                child = child->next;
+                current = found;
             }
-            
-            FreePool(namebuf);
-            
-            if (!found) {
-                Print(L"WARNING: (config) Component %a not found\n", namebuf);
-                return FALSE;
-            }
-            current = found;
 
             if (*p == '\0') break;
             start = p + 1;
         }
-        
-        if (*p == '\0') break;
         p++;
     }
+
     return ConfigNodeGetValue(current, out);
 }
 
@@ -285,18 +271,25 @@ BOOLEAN arrays_equal(CHAR8* a, CHAR8* b, UINTN n) {
     return TRUE;
 }
 
-EFI_STATUS getConfig(CHAR16* path, ConfigNode** output) {
-    VOID* content;
+EFI_STATUS getConfig(CHAR16* path, ConfigNode*** output) {
+    if (path == NULL || output == NULL) return EFI_INVALID_PARAMETER;
+
+    VOID* content = NULL;
+    REGISTRY_TABLE_ENTRY* entriesPtr = NULL;
+    REGISTRY_ENTRY* entriesHeaders = NULL;
+    ConfigNode** tree = NULL;
+    UINTN entryCount = 0;
+
     UINTN contentSize;
     EFI_STATUS Status = loadFile(path, &content, &contentSize);
     if (EFI_ERROR(Status)) {
-        return Status;
+        goto cleanup;
     }
 
     UINTN pos = 0;
     if (contentSize < pos + sizeof(HEADER)) {
-        FreePool(content);
-        return EFI_END_OF_FILE;
+        Status = EFI_END_OF_FILE;
+        goto cleanup;
     }
 
     HEADER header;
@@ -305,18 +298,18 @@ EFI_STATUS getConfig(CHAR16* path, ConfigNode** output) {
 
     CHAR8 expectedMagic[4] = {'N', 'D', 'R', '\00'};
     if (!arrays_equal(expectedMagic, header.magic, 4)) {
-        FreePool(content);
-        return EFI_INCOMPATIBLE_VERSION;
+        Status = EFI_INCOMPATIBLE_VERSION;
+        goto cleanup;
     }
 
     if(!verifyHeader(&header)) {
-        FreePool(content);
-        return EFI_CRC_ERROR;
+        Status = EFI_CRC_ERROR;
+        goto cleanup;
     }
 
     if (contentSize < pos + sizeof(REGISTRY_TABLE_HEADER)) {
-        FreePool(content);
-        return EFI_END_OF_FILE;
+        Status = EFI_END_OF_FILE;
+        goto cleanup;
     }
 
     REGISTRY_TABLE_HEADER regHeader;
@@ -324,16 +317,15 @@ EFI_STATUS getConfig(CHAR16* path, ConfigNode** output) {
     UINTN regHeaderStart = pos;
     pos += sizeof(REGISTRY_TABLE_HEADER);
 
-    UINTN entryCount = regHeader.numOfEntries;
+    entryCount = regHeader.numOfEntries;
     Print(L"INFO: (config) Found %ld entries\n", entryCount);
-    REGISTRY_TABLE_ENTRY* entriesPtr = (REGISTRY_TABLE_ENTRY*)AllocatePool(sizeof(REGISTRY_TABLE_ENTRY) * entryCount);
+    entriesPtr = (REGISTRY_TABLE_ENTRY*)AllocatePool(sizeof(REGISTRY_TABLE_ENTRY) * entryCount);
     Print(L"INFO: (config) Allocated %ld bytes for entriesPtr\n", sizeof(REGISTRY_TABLE_ENTRY) * entryCount);
 
     for (UINTN i = 0; i < entryCount; i++) {
         if (pos + sizeof(REGISTRY_TABLE_ENTRY) > contentSize) {
-            FreePool(content);
-            FreePool(entriesPtr);
-            return EFI_END_OF_FILE;
+            Status = EFI_END_OF_FILE;
+            goto cleanup;
         }
 
         CopyMem(&entriesPtr[i], (REGISTRY_TABLE_ENTRY*)((UINT8*)content + pos), sizeof(REGISTRY_TABLE_ENTRY));
@@ -343,15 +335,12 @@ EFI_STATUS getConfig(CHAR16* path, ConfigNode** output) {
     BOOLEAN regHeaderCrcCheck = FALSE;
     Status = verifyRegistryTable(content + regHeaderStart, pos - regHeaderStart, &regHeader, &regHeaderCrcCheck);
     if (EFI_ERROR(Status)) {
-        FreePool(content);
-        FreePool(entriesPtr);
-        return Status;
+        goto cleanup;
     }
 
     if (!regHeaderCrcCheck) {
-        FreePool(content);
-        FreePool(entriesPtr);
-        return EFI_CRC_ERROR;
+        Status = EFI_CRC_ERROR;
+        goto cleanup;
     }
 
     for (UINTN i = 0; i < entryCount; i++) {
@@ -359,7 +348,7 @@ EFI_STATUS getConfig(CHAR16* path, ConfigNode** output) {
         Print(L"INFO: (config) Entry %ld id=0x%lX offset=0x%lX rootID=0x%lX\n", i, entry.entryId, entry.entryOffset, entry.rootId);
     }
 
-    REGISTRY_ENTRY* entriesHeaders = (REGISTRY_ENTRY*)AllocatePool(sizeof(REGISTRY_ENTRY) * entryCount);
+    entriesHeaders = (REGISTRY_ENTRY*)AllocatePool(sizeof(REGISTRY_ENTRY) * entryCount);
     for (UINTN i = 0; i < entryCount; i++) {
         REGISTRY_TABLE_ENTRY entry = entriesPtr[i];
         pos = entry.entryOffset;
@@ -384,10 +373,8 @@ EFI_STATUS getConfig(CHAR16* path, ConfigNode** output) {
         UINTN nameEnd = entriesHeaders[i].entryNameSize + nameStart;
         if (nameEnd > contentSize) {
             Print(L"ERROR: (config) Entry %ld: name out of bounds", i);
-            FreePool(content);
-            FreePool(entriesPtr);
-            FreePool(entriesHeaders);
-            return EFI_END_OF_FILE;
+            Status = EFI_END_OF_FILE;
+            goto cleanup;
         }
 
         CHAR8* entryName = (CHAR8*)AllocatePool(nameEnd - nameStart);
@@ -406,10 +393,8 @@ EFI_STATUS getConfig(CHAR16* path, ConfigNode** output) {
         UINTN dataEnd = entry.entryOffset + entriesHeaders[i].entrySize;
         if (dataEnd > contentSize) {
             Print(L"ERROR: (config) Entry %ld: name out of bounds", i);
-            FreePool(content);
-            FreePool(entriesPtr);
-            FreePool(entriesHeaders);
-            return EFI_END_OF_FILE;
+            Status = EFI_END_OF_FILE;
+            goto cleanup;
         }
 
         UINT8* entryData = (UINT8*)AllocatePool(dataEnd - dataStart);
@@ -421,7 +406,7 @@ EFI_STATUS getConfig(CHAR16* path, ConfigNode** output) {
         Print(L"INFO: (config) Entry %ld: id=0x%lX, flags=0x%X, data_len=%ld\n", i, entriesHeaders[i].entryId, entriesHeaders[i].flags, entriesHeaders[i].dataSize);
     }
 
-    ConfigNode* tree = (ConfigNode*)AllocatePool(sizeof(ConfigNode) * (entryCount + 1));
+    tree = (ConfigNode**)AllocatePool(sizeof(ConfigNode) * (entryCount + 1));
     Print(L"INFO: (config) Allocated %ld bytes for registry tree\n", sizeof(ConfigNode) * (entryCount + 1));
 
     CHAR8* rootName = (CHAR8*)"root";
@@ -445,10 +430,10 @@ EFI_STATUS getConfig(CHAR16* path, ConfigNode** output) {
 
     for (UINTN i = 0; i < entryCount; i++) {
         REGISTRY_TABLE_ENTRY entry = entriesPtr[i];
-        ConfigNode* currentNode = &tree[i + 1];
+        ConfigNode* currentNode = tree[i + 1];
 
         if (entry.rootId == 0) {
-            ConfigNodeAddChild(&tree[0], currentNode);
+            ConfigNodeAddChild(tree[0], currentNode);
             continue;
         }
 
@@ -460,9 +445,9 @@ EFI_STATUS getConfig(CHAR16* path, ConfigNode** output) {
             }
         }
         if (parentIndex != 0) {
-            ConfigNodeAddChild(&tree[parentIndex], currentNode);
+            ConfigNodeAddChild(tree[parentIndex], currentNode);
         } else {
-            ConfigNodeAddChild(&tree[0], currentNode);
+            ConfigNodeAddChild(tree[0], currentNode);
         }
     }
 
@@ -472,4 +457,24 @@ EFI_STATUS getConfig(CHAR16* path, ConfigNode** output) {
 
     *output = tree;
     return EFI_SUCCESS;
+
+    cleanup:
+        if (EFI_ERROR(Status)) {
+            if (tree) ConfigNodeFreeTree(tree[0]);
+        }
+
+        if (entriesHeaders) {
+            for (UINTN i = 0; i < entryCount; i++) {
+                if (entriesHeaders[i].entryName)
+                    FreePool(entriesHeaders[i].entryName);
+                if (entriesHeaders[i].data)
+                    FreePool(entriesHeaders[i].data);
+            }
+            FreePool(entriesHeaders);
+        }
+
+        if (entriesPtr) FreePool(entriesPtr);
+        if (content) FreePool(content);
+
+        return Status;
 }

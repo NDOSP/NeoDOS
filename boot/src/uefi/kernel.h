@@ -10,7 +10,7 @@
 #include "acpi.h"
 #include "nff.h"
 
-#define BOOTSTRAP_MEMORY_PAGES MB(1)/PAGE_SIZE
+#define BOOTSTRAP_MEMORY_PAGES MB(1)/EFI_PAGE_SIZE
 
 typedef struct {
     UINT64 paddr;

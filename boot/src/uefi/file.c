@@ -1,7 +1,7 @@
 #include "file.h"
 
 EFI_STATUS loadFile(IN CHAR16* path, OUT VOID** data, OUT UINTN* fileSize) {
-    if (data == NULL) {
+    if (data == NULL || fileSize == NULL) {
         Print(L"ERROR: (file) loadFile called with NULL data parameter\n");
         return EFI_INVALID_PARAMETER;
     }
@@ -74,7 +74,6 @@ EFI_STATUS loadFile(IN CHAR16* path, OUT VOID** data, OUT UINTN* fileSize) {
     if (*data == NULL) {
         Print(L"ERROR: (file) Failed to allocate %lu bytes for file data\n", *fileSize);
         FreePool(fileInfoBuffer);
-        FreePool(*data);
         fileRoot->Close(fileRoot);
         file->Close(file);
         return EFI_OUT_OF_RESOURCES;

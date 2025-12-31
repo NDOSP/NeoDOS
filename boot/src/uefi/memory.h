@@ -10,8 +10,6 @@
 #define MB(x) (KB(x) * 1024ULL)
 #define GB(x) (MB(x) * 1024ULL)
 
-#define PAGE_SIZE 4096
-
 #define ENTRY_PRESENT            (1ULL << 0)
 #define ENTRY_RW                 (1ULL << 1)
 #define ENTRY_USER               (1ULL << 2)

@@ -46,7 +46,7 @@ EFI_STATUS loadFont(CHAR16* fileAddress, FONT_INFO** font) {
 
     NFF_CHAR_ENTRY* table = (NFF_CHAR_ENTRY*)(base + charTableOffset);
 
-    UINTN fontStructSizePages = (sizeof(FONT_INFO) + glyphCount * sizeof(FONT_GLYPH) + glyphCount * bytesPerGlyph + PAGE_SIZE - 1) / PAGE_SIZE;
+    UINTN fontStructSizePages = (sizeof(FONT_INFO) + glyphCount * sizeof(FONT_GLYPH) + glyphCount * bytesPerGlyph + EFI_PAGE_SIZE - 1) / EFI_PAGE_SIZE;
 
     FONT_INFO* outFont;
     Status = uefi_call_wrapper(gBS->AllocatePages, 4, AllocateAnyPages, EfiLoaderData, fontStructSizePages, (VOID**)&outFont);
