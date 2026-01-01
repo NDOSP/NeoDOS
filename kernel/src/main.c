@@ -3,6 +3,7 @@
 #include "memory.h"
 #include "interrupts/idt.h"
 #include "tss.h"
+#include "acpi.h"
 
 extern void loadGdt(void);
 
@@ -13,12 +14,11 @@ void kmain() {
 
     initTss();
     loadGdt();
+    cleanScreen(black);
     drawOutput("Hello, World!\n", white);
     
     idtInit();
-    uint8_t* vaddr = (uint8_t*)addPageBootstrap(0xFFFFF000ULL, 0x10000, PAGE_PRESENT | PAGE_CACHE_DISABLE | PAGE_WRITE);
-    vaddr[5] = 0xDE;
-    
-    asm volatile("ud2");
+    acpiInit();
+
     asm volatile("hlt");
 }

@@ -125,3 +125,12 @@ void* addPageBootstrap(uint64_t vaddr, uint64_t paddr, uint64_t flags) {
     refreshTLB();
     return (void*)vaddr;
 }
+
+void* addPageRangeBootstrap(uint64_t vaddr, size_t size, uint64_t paddr, uint64_t flags) {
+    size_t pages = PAGE_ALIGN_UP(size) / PAGE_SIZE;
+    for (size_t i = 0; i < pages; i++) {
+        addPageBootstrap(PAGE_ALIGN_DOWN(vaddr) + i * PAGE_SIZE, PAGE_ALIGN_DOWN(paddr) + i * PAGE_SIZE, flags);
+    }
+
+    return (void*)vaddr;
+}

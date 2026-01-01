@@ -76,7 +76,7 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* Syste
     Status = findACPI(&bInfo.rsdp);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
 
-    UINTN maxCPU = ConfigNodeGetU64(tree[0], (CHAR8*)"Bootloader/MaxCPU", 4);
+    UINTN maxCPU = ConfigNodeGetU64(tree[0], (CHAR8*)"Bootloader/MaxCPU", 4); // TODO: Use ACPI data
     bInfo.stackCount = maxCPU;
 
     Status = loadFont(ConfigNodeGetStr16(tree[0], (CHAR8*)"Bootloader/FontLocation", L"\\NEODOS\\FONT.BLL"), &bInfo.font);
@@ -99,6 +99,13 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* Syste
     
     for (UINTN i = 0; i < BOOTSTRAP_MEMORY_PAGES; i++) {
         Status = addPage(bInfo.pml4, bInfo.bootstrapMemoryAddress + i * EFI_PAGE_SIZE, bInfo.bootstrapMemoryAddress + i * EFI_PAGE_SIZE, ENTRY_PRESENT | ENTRY_RW | ENTRY_EXEC_DISABLE);
+        if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
+    }
+
+    UINTN pagesRsdp = (align_up(bInfo.rsdp->Length, EFI_PAGE_SIZE)) / EFI_PAGE_SIZE;
+    for (UINTN i = 0; i < pagesRsdp; i++) {
+        UINT64 addr = ((UINT64)bInfo.rsdp & ENTRY_ADDR_MASK) + i * EFI_PAGE_SIZE;
+        Status = addPage(bInfo.pml4, addr, addr, ENTRY_PRESENT | ENTRY_RW);
         if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
     }
 
