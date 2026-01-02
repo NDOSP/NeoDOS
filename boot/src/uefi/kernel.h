@@ -34,8 +34,8 @@ typedef struct {
     RSDP* rsdp;
     FONT_INFO* font;
     UINT64 fontScale;
-    UINTN bootstrapMemoryAddress;
-    UINT64 bootstrapMemoryPages;
+    UINTN memoryBitmapAddress;
+    UINT64 memoryBitmapPages;
     MEMORY_MAP map;
 } BOOT_INFO;
 

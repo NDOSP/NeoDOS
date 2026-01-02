@@ -72,8 +72,8 @@ typedef struct {
     Rsdp* rsdp;
     FontInfo* font;
     uint64_t fontScale;
-    void* bootstrapMemoryAddress;
-    uint64_t bootstrapMemoryPages;
+    void* memoryBitmapAddress;
+    uint64_t memoryBitmapPages;
     MemoryMap map;
 } BootInfo;
 

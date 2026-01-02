@@ -40,7 +40,7 @@ typedef struct {
     UINT64 size;
     UINT32 type;
     UINT32 reserved[3];
-} MEMORY_MAP_ENTRY; 
+} __attribute__((packed)) MEMORY_MAP_ENTRY; 
 
 typedef struct {
     UINTN numberOfEntries;
@@ -51,5 +51,7 @@ typedef struct {
 } MEMORY_MAP;
 
 EFI_STATUS getMemoryMap(MEMORY_MAP* map);
+EFI_STATUS allocateMemoryBitmap(PAGETABLEENTRY (*pml4)[512], UINTN* memoryBitmapAddress, UINT64* memoryBitmapPages);
+EFI_STATUS fillMemoryBitmap(UINTN memoryBitmapAddress, MEMORY_MAP* map);
 
 #endif // MEMORY_BOOT_H

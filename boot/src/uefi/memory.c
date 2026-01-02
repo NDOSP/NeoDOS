@@ -92,7 +92,7 @@ EFI_STATUS getMemoryMap(MEMORY_MAP* map) {
         UINT64 start = desc->PhysicalStart;
         UINT64 size = desc->NumberOfPages * EFI_PAGE_SIZE;
 
-        if (outIndex > 0 && map->entries[outIndex - 1].type == EfiConventionalMemory && type == EfiConventionalMemory && map->entries[outIndex - 1].address + map->entries[outIndex - 1].size == start) {
+        if (outIndex > 0 && map->entries[outIndex - 1].type == type && map->entries[outIndex - 1].address + map->entries[outIndex - 1].size == start) {
             map->entries[outIndex - 1].size += size;
         } else {
             map->entries[outIndex].address = start;
@@ -103,5 +103,57 @@ EFI_STATUS getMemoryMap(MEMORY_MAP* map) {
     }
 
     map->numberOfEntries = outIndex;
+    return EFI_SUCCESS;
+}
+
+EFI_STATUS allocateMemoryBitmap(PAGETABLEENTRY (*pml4)[512], UINTN* memoryBitmapAddress, UINT64* memoryBitmapPages) {
+    if (memoryBitmapAddress == NULL || memoryBitmapPages == NULL) return EFI_INVALID_PARAMETER;
+
+    EFI_STATUS Status;
+    MEMORY_MAP map;
+
+    Status = getMemoryMap(&map);
+    if (EFI_ERROR(Status)) return Status;
+
+    UINT64 totalPages = 0;
+    for (UINTN i = 0; i < map.numberOfEntries; i++) {
+        totalPages += map.entries[i].size / EFI_PAGE_SIZE;
+    }
+
+    UINT64 bitmapBytes = (totalPages + 7) / 8;
+    UINT64 pages = (bitmapBytes + EFI_PAGE_SIZE - 1) / EFI_PAGE_SIZE;
+
+    EFI_PHYSICAL_ADDRESS bitmapAddr;
+    Status = uefi_call_wrapper(gBS->AllocatePages, 4, AllocateAnyPages, EfiLoaderData, pages, &bitmapAddr);
+    if (EFI_ERROR(Status)) return Status;
+
+    for (UINTN i = 0; i < pages; i++) {
+        Status = addPage(pml4, bitmapAddr + i * EFI_PAGE_SIZE, bitmapAddr + i * EFI_PAGE_SIZE, ENTRY_PRESENT | ENTRY_RW);
+        if (EFI_ERROR(Status)) return Status;
+    }
+
+    SetMem((VOID*)bitmapAddr, pages * EFI_PAGE_SIZE, 0);
+
+    *memoryBitmapAddress = (UINTN)bitmapAddr;
+    *memoryBitmapPages = pages;
+
+    return EFI_SUCCESS;
+}
+
+EFI_STATUS fillMemoryBitmap(UINTN memoryBitmapAddress, MEMORY_MAP* map) {
+    if (memoryBitmapAddress == 0) return EFI_INVALID_PARAMETER;
+
+    UINT64 pageIndex = 0;
+    for (UINTN i = 0; i < map->numberOfEntries; i++) {
+        UINT64 numPages = map->entries[i].size / EFI_PAGE_SIZE;
+        for (UINT64 p = 0; p < numPages; p++, pageIndex++) {
+            UINT64 byteIndex = pageIndex / 8;
+            UINT8 bitIndex = pageIndex % 8;
+            UINT8* byte = (UINT8*)(UINTN)memoryBitmapAddress + byteIndex;
+
+            *byte |= (1 << bitIndex);
+        }
+    }
+
     return EFI_SUCCESS;
 }

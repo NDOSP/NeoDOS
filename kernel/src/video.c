@@ -1,5 +1,5 @@
 #include "video.h"
-#include "memory.h"
+#include "memory/memutils.h"
 
 static FontGlyph* findGlyph(char c) {
     for (uint32_t i = 0; i < bInfo.font->glyphCount; i++) {

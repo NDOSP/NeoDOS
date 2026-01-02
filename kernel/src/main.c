@@ -10,8 +10,6 @@ extern void loadGdt(void);
 __attribute__((section(".bootinfo"))) BootInfo bInfo;
 
 void kmain() {
-    bootstrapInit();
-
     initTss();
     loadGdt();
     cleanScreen(black);

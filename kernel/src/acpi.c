@@ -1,4 +1,5 @@
-#include "memory.h"
+#include "memory/paging.h"
+#include "memory/vmm.h"
 #include "bootinfo.h"
 #include "madt.h"
 #include "acpi.h"
@@ -105,10 +106,10 @@ void parseXSDT(AcpiSdtHeader* xsdt) {
 
     for (size_t i = 0; i < entryCount; i++) {
         uint64_t tablePhys = entries[i];
-        AcpiSdtHeader* tableHeader = addPageBootstrap(tablePhys & ENTRY_ADDR_MASK, tablePhys & ENTRY_ADDR_MASK, PAGE_PRESENT | PAGE_WRITE);
+        AcpiSdtHeader* tableHeader = addPage(tablePhys & ENTRY_ADDR_MASK, tablePhys & ENTRY_ADDR_MASK, PAGE_PRESENT | PAGE_WRITE);
 
         size_t tableSize = PAGE_ALIGN_UP(tableHeader->length);
-        addPageRangeBootstrap(tablePhys & ENTRY_ADDR_MASK, tableSize, tablePhys & ENTRY_ADDR_MASK, PAGE_PRESENT | PAGE_WRITE);
+        addPageRange(tablePhys & ENTRY_ADDR_MASK, tableSize, tablePhys & ENTRY_ADDR_MASK, PAGE_PRESENT | PAGE_WRITE);
 
         AcpiSdtHeader* table = (AcpiSdtHeader*)tablePhys;
         if (!acpiChecksum(table, table->length)) continue;
@@ -123,12 +124,12 @@ void acpiInit(void) {
         asm volatile("hlt");
     }
 
-    AcpiSdtHeader* xsdt = addPageBootstrap(bInfo.rsdp->xsdtAddress & ENTRY_ADDR_MASK, bInfo.rsdp->xsdtAddress  & ENTRY_ADDR_MASK, PAGE_PRESENT | PAGE_WRITE);
+    AcpiSdtHeader* xsdt = addPage(bInfo.rsdp->xsdtAddress & ENTRY_ADDR_MASK, bInfo.rsdp->xsdtAddress  & ENTRY_ADDR_MASK, PAGE_PRESENT | PAGE_WRITE);
     if (!xsdt) {
         // TODO: Panic
         asm volatile("hlt");
     }
 
-    addPageRangeBootstrap(bInfo.rsdp->xsdtAddress & ENTRY_ADDR_MASK, PAGE_ALIGN_UP(xsdt->length), bInfo.rsdp->xsdtAddress & ENTRY_ADDR_MASK, PAGE_PRESENT | PAGE_WRITE);
+    addPageRange(bInfo.rsdp->xsdtAddress & ENTRY_ADDR_MASK, PAGE_ALIGN_UP(xsdt->length), bInfo.rsdp->xsdtAddress & ENTRY_ADDR_MASK, PAGE_PRESENT | PAGE_WRITE);
     parseXSDT((AcpiSdtHeader*)bInfo.rsdp->xsdtAddress);
 }

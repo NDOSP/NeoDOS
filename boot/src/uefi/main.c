@@ -93,15 +93,6 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* Syste
 
     (*bInfo.pml4)[RECURSIVE_PML4_IDX] = ((UINTN)bInfo.pml4 & ENTRY_ADDR_MASK) | ENTRY_PRESENT | ENTRY_RW;
 
-    bInfo.bootstrapMemoryPages = BOOTSTRAP_MEMORY_PAGES;
-    Status = uefi_call_wrapper(gBS->AllocatePages, 4, AllocateAnyPages, EfiLoaderData, BOOTSTRAP_MEMORY_PAGES, (EFI_PHYSICAL_ADDRESS*)&bInfo.bootstrapMemoryAddress);
-    if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
-    
-    for (UINTN i = 0; i < BOOTSTRAP_MEMORY_PAGES; i++) {
-        Status = addPage(bInfo.pml4, bInfo.bootstrapMemoryAddress + i * EFI_PAGE_SIZE, bInfo.bootstrapMemoryAddress + i * EFI_PAGE_SIZE, ENTRY_PRESENT | ENTRY_RW | ENTRY_EXEC_DISABLE);
-        if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
-    }
-
     UINTN pagesRsdp = (align_up(bInfo.rsdp->Length, EFI_PAGE_SIZE)) / EFI_PAGE_SIZE;
     for (UINTN i = 0; i < pagesRsdp; i++) {
         UINT64 addr = ((UINT64)bInfo.rsdp & ENTRY_ADDR_MASK) + i * EFI_PAGE_SIZE;
@@ -112,8 +103,10 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* Syste
     Status = mapKernelSpace(bInfo.pml4, &bInfo.kInfo, &bInfo.fb, maxCPU, bInfo.font);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
 
-    CopyMem((VOID*)bInfo.kInfo.bootInfo.paddr, (VOID*)&bInfo, sizeof(bInfo));
     Status = addPage(bInfo.pml4, (UINT64)&kernelJump_start, (UINT64)&kernelJump_start, ENTRY_PRESENT | ENTRY_RW);
+    if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
+
+    Status = allocateMemoryBitmap(bInfo.pml4, &bInfo.memoryBitmapAddress, &bInfo.memoryBitmapPages);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
 
     Status = getMemoryMap(&bInfo.map);
@@ -121,7 +114,11 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* Syste
 
     Status = uefi_call_wrapper(gBS->ExitBootServices, 2, ImageHandle, bInfo.map.mapKey);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
+
+    Status = fillMemoryBitmap(bInfo.memoryBitmapAddress, &bInfo.map);
+    if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
     
+    CopyMem((VOID*)bInfo.kInfo.bootInfo.paddr, (VOID*)&bInfo, sizeof(bInfo));
     kernelJump((VOID*)bInfo.kInfo.entryPoint, (UINT64)bInfo.pml4);
 
     errorHandler(EFI_LOAD_ERROR, ImageHandle);

@@ -1,12 +1,7 @@
-#ifndef MEMORY_H
-#define MEMORY_H
+#ifndef PAGING_H
+#define PAGING_H
 
-#include <stdint.h>
-#include <stddef.h>
-
-#define KB(x) ((x) * 1024ULL)
-#define MB(x) (KB(x) * 1024ULL)
-#define GB(x) (MB(x) * 1024ULL)
+#include "memutils.h"
 
 #define PAGE_SIZE 4096
 #define RECURSIVE_SLOT 505ULL
@@ -37,34 +32,7 @@
 
 #define ENTRY_ADDR_MASK          0x000FFFFFFFFFF000ULL
 
-#define ALIGN_UP(size, align) (((size) + (align) - 1) & ~((align) - 1))
 #define PAGE_ALIGN_UP(size) ALIGN_UP(size, PAGE_SIZE)
-#define ALIGN_DOWN(size, align) ((size) & ~((align) - 1))
 #define PAGE_ALIGN_DOWN(size) ALIGN_DOWN(size, PAGE_SIZE)
 
-typedef enum {
-    EfiReservedMemoryType,
-    EfiLoaderCode,
-    EfiLoaderData,
-    EfiBootServicesCode,
-    EfiBootServicesData,
-    EfiRuntimeServicesCode,
-    EfiRuntimeServicesData,
-    EfiConventionalMemory,
-    EfiUnusableMemory,
-    EfiACPIReclaimMemory,
-    EfiACPIMemoryNVS,
-    EfiMemoryMappedIO,
-    EfiMemoryMappedIOPortSpace,
-    EfiPalCode,
-    EfiMaxMemoryType
-} EFI_MEMORY_TYPE;
-
-void* memset(void* s, int c, uint32_t n);
-void* memcpy(void* dest, const void* src, uint32_t n);
-
-void bootstrapInit(void);
-void* addPageBootstrap(uint64_t vaddr, uint64_t paddr, uint64_t flags);
-void* addPageRangeBootstrap(uint64_t vaddr, size_t size, uint64_t paddr, uint64_t flags);
-
-#endif // MEMORY_H
+#endif // PAGING_H

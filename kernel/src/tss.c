@@ -1,6 +1,6 @@
 #include "tss.h"
 #include "bootinfo.h"
-#include "memory.h"
+#include "memory/paging.h"
 
 typedef struct{
     uint16_t limit_low;
