@@ -25,4 +25,6 @@ typedef struct {
 
 void initTss(void);
 
+extern TSS tss[255];
+
 #endif // TSS_H
