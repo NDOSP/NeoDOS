@@ -59,6 +59,8 @@ void tempUnmap(void) {
 void* addPage(uint64_t vaddr, uint64_t paddr, uint64_t flags) {
     if (vaddr % PAGE_SIZE != 0 || paddr % PAGE_SIZE != 0) return NULL;
 
+    uint64_t userflag = flags & PAGE_USER ? PAGE_USER : 0;
+
     uint16_t pml4_i = PML4_IDX(vaddr);
     uint16_t pdpt_i = PDPT_IDX(vaddr);
     uint16_t pd_i   = PD_IDX(vaddr);
@@ -73,7 +75,11 @@ void* addPage(uint64_t vaddr, uint64_t paddr, uint64_t flags) {
         memset(tmp, 0, PAGE_SIZE);
         tempUnmap();
 
-        pml4[pml4_i] = (new & ENTRY_ADDR_MASK) | PAGE_PRESENT | PAGE_WRITE;
+        pml4[pml4_i] = (new & ENTRY_ADDR_MASK) | PAGE_PRESENT | PAGE_WRITE | userflag;
+    }
+
+    if (!(pml4[pml4_i] & PAGE_USER) && userflag) {
+        pml4[pml4_i] |= PAGE_USER;
     }
 
     uint64_t* pdpt = PDPT_VADDR(pml4_i);
@@ -85,7 +91,11 @@ void* addPage(uint64_t vaddr, uint64_t paddr, uint64_t flags) {
         memset(tmp, 0, PAGE_SIZE);
         tempUnmap();
 
-        pdpt[pdpt_i] = (new & ENTRY_ADDR_MASK) | PAGE_PRESENT | PAGE_WRITE;
+        pdpt[pdpt_i] = (new & ENTRY_ADDR_MASK) | PAGE_PRESENT | PAGE_WRITE | userflag;
+    }
+
+    if (!(pdpt[pdpt_i] & PAGE_USER) && userflag) {
+        pdpt[pdpt_i] |= PAGE_USER;
     }
 
     uint64_t* pd = PD_VADDR(pml4_i, pdpt_i);
@@ -97,12 +107,16 @@ void* addPage(uint64_t vaddr, uint64_t paddr, uint64_t flags) {
         memset(tmp, 0, PAGE_SIZE);
         tempUnmap();
 
-        pd[pd_i] = (new & ENTRY_ADDR_MASK) | PAGE_PRESENT | PAGE_WRITE;
+        pd[pd_i] = (new & ENTRY_ADDR_MASK) | PAGE_PRESENT | PAGE_WRITE | userflag;
+    }
+
+    if (!(pd[pd_i] & PAGE_USER) && userflag) {
+        pd[pd_i] |= PAGE_USER;
     }
 
     uint64_t* pt = PT_VADDR(pml4_i, pdpt_i, pd_i);
 
-    pt[pt_i] = (paddr & ENTRY_ADDR_MASK) | PAGE_PRESENT | flags; // #PF
+    pt[pt_i] = (paddr & ENTRY_ADDR_MASK) | PAGE_PRESENT | flags;
 
     refreshTLB((void*)vaddr);
     return (void*)vaddr;
@@ -178,4 +192,33 @@ void freePages(void* address, size_t numOfPages) {
     for (size_t i = 0; i < numOfPages; i++) {
         freePage((uint64_t)address + i * PAGE_SIZE);
     }
+}
+
+uint64_t vmtoPm(uint64_t vaddr) {
+    uint16_t pml4_i = PML4_IDX(vaddr);
+    uint16_t pdpt_i = PDPT_IDX(vaddr);
+    uint16_t pd_i   = PD_IDX(vaddr);
+    uint16_t pt_i   = PT_IDX(vaddr);
+
+    uint64_t* pml4 = PML4_VADDR;
+    if (!(pml4[pml4_i] & PAGE_PRESENT)) return 0;
+
+    uint64_t* pdpt = PDPT_VADDR(pml4_i);
+    if (!(pdpt[pdpt_i] & PAGE_PRESENT)) return 0;
+    
+    if (pdpt[pdpt_i] & PAGE_PAGE_SIZE) {
+        return (pdpt[pdpt_i] & 0xFFFFFC0000000ULL) + (vaddr & 0x3FFFFFFF);
+    }
+
+    uint64_t* pd = PD_VADDR(pml4_i, pdpt_i);
+    if (!(pd[pd_i] & PAGE_PRESENT)) return 0;
+
+    if (pd[pd_i] & PAGE_PAGE_SIZE) {
+        return (pd[pd_i] & 0xFFFFFFFE00000ULL) + (vaddr & 0x1FFFFF);
+    }
+
+    uint64_t* pt = PT_VADDR(pml4_i, pdpt_i, pd_i);
+    if (!(pt[pt_i] & PAGE_PRESENT)) return 0;
+
+    return (pt[pt_i] & ENTRY_ADDR_MASK) + (vaddr & 0xFFF);
 }

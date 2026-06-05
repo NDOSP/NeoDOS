@@ -36,19 +36,22 @@ void initTss(void) {
         tss[cpuId].ist5 = 0;
         tss[cpuId].ist6 = 0;
         tss[cpuId].ist7 = 0;
+
+        GdtTssEntry* e = (GdtTssEntry*)&gdt64[5 + cpuId * 2];
+
+        uint64_t base = (uint64_t)&tss[cpuId];
+        uint32_t limit = sizeof(TSS) - 1;
+
+        e->limit_low = limit & 0xFFFF;
+        e->base_low = base & 0xFFFF;
+        e->base_mid = (base >> 16) & 0xFF;
+        e->access = 0x89; // Present, ring 0, type 9 (available 64-bit TSS)
+        e->gran = (limit >> 16) & 0x0F;
+        e->base_high = (base >> 24) & 0xFF;
+        e->base_upper = base >> 32;
     }
+}
 
-    GdtTssEntry* e = (GdtTssEntry*)&gdt64[3];
-
-    uint64_t base = (uint64_t)tss;
-    uint32_t limit = sizeof(TSS) - 1;
-
-    e->limit_low = limit & 0xFFFF;
-    e->base_low = base & 0xFFFF;
-    e->base_mid = (base >> 16) & 0xFF;
-    e->access = 0x89;   // present=1, ring0, type=9 (64-bit TSS)
-    e->gran = (limit >> 16) & 0x0F;
-    e->base_high = (base >> 24) & 0xFF;
-    e->base_upper = base >> 32;
-    e->reserved = 0;
+void updateTssRsp0(uint64_t rsp0, size_t cpuId) {
+    tss[cpuId].rsp0 = rsp0;
 }

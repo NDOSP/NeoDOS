@@ -9,5 +9,6 @@ void* addPageRange(uint64_t vaddr, size_t size, uint64_t paddr, uint64_t flags);
 
 void freePages(void* address, size_t numOfPages);
 void* allocatePages(size_t numOfPages, uint64_t flags);
+uint64_t vmtoPm(uint64_t vaddr);
 
 #endif // VMM_H
