@@ -5,6 +5,7 @@
 #include "interrupts/idt.h"
 #include "tss.h"
 #include "acpi.h"
+#include "panic.h"
 
 extern void loadGdt(void);
 
@@ -18,5 +19,6 @@ void kmain() {
     
     idtInit();
     acpiInit();
+    panic("Reached end of kmain");
     asm volatile("hlt");
 }

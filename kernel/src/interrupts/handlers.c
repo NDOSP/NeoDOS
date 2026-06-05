@@ -11,10 +11,15 @@ InterruptHandler getInterruptHandler(uint8_t n) {
     return handlers[n];
 }
 
-void defaultHandler(INTERRUPT_FRAME* frame) {
+void handlerScreen() {
     cleanScreen(red);
     drawRect(0, 0, bInfo.fb.fbWidth, bInfo.font->fontHeight * bInfo.fontScale, white);
     drawString("NeoDOS Error", (bInfo.fb.fbWidth - strlen("NeoDOS Error") * bInfo.font->fontWidth * bInfo.fontScale) / 2, 0, red);
+    drawString("#", bInfo.fb.fbWidth - bInfo.font->fontWidth * bInfo.fontScale, bInfo.fb.fbHeight - bInfo.font->fontHeight * bInfo.fontScale, white);
+}
+
+void defaultHandler(INTERRUPT_FRAME* frame) {
+    handlerScreen();
 
     SetCursorPos((bInfo.fb.fbWidth - 47 * bInfo.fontScale * bInfo.font->fontWidth) / 2, bInfo.fontScale * bInfo.font->fontHeight * 2);
     drawOutput("RAX: ", white);
@@ -84,7 +89,6 @@ void defaultHandler(INTERRUPT_FRAME* frame) {
     drawOutput(" INT: ", white);
     drawHex64(frame->interruptNumber, white);
     drawOutput("\n", white);
-    drawString("#", bInfo.fb.fbWidth - bInfo.font->fontWidth * bInfo.fontScale, bInfo.fb.fbHeight - bInfo.font->fontHeight * bInfo.fontScale, white);
 }
 
 

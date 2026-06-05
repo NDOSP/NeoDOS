@@ -12,5 +12,6 @@ InterruptHandler getInterruptHandler(uint8_t n);
 
 void pageFaultHandler(INTERRUPT_FRAME* frame);
 
+void handlerScreen();
 void defaultHandler(INTERRUPT_FRAME* frame);
 #endif // INTHANDLERS_H

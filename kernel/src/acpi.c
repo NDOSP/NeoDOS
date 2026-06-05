@@ -3,6 +3,7 @@
 #include "bootinfo.h"
 #include "madt.h"
 #include "acpi.h"
+#include "panic.h"
 
 static inline int acpiChecksum(void* table, size_t length) {
     uint8_t sum = 0;
@@ -119,16 +120,10 @@ void parseXSDT(AcpiSdtHeader* xsdt) {
 }
 
 void acpiInit(void) {
-    if (!validateRsdp()) {
-        // TODO: Panic
-        asm volatile("hlt");
-    }
+    if (!validateRsdp()) panic("Invalid RSDP");
 
     AcpiSdtHeader* xsdt = addPage(bInfo.rsdp->xsdtAddress & ENTRY_ADDR_MASK, bInfo.rsdp->xsdtAddress  & ENTRY_ADDR_MASK, PAGE_PRESENT | PAGE_WRITE);
-    if (!xsdt) {
-        // TODO: Panic
-        asm volatile("hlt");
-    }
+    if (!xsdt) panic("Failed to map XSDT");
 
     addPageRange(bInfo.rsdp->xsdtAddress & ENTRY_ADDR_MASK, PAGE_ALIGN_UP(xsdt->length), bInfo.rsdp->xsdtAddress & ENTRY_ADDR_MASK, PAGE_PRESENT | PAGE_WRITE);
     parseXSDT((AcpiSdtHeader*)bInfo.rsdp->xsdtAddress);
