@@ -27,11 +27,14 @@ rm -rf debug/
 mkdir debug/
 
 qemu-system-x86_64 \
-    -m 64m \
+    -m 128m \
     -drive if=pflash,format=raw,readonly=on,file=$OVMF_DIR/OVMF_CODE.fd \
     -drive if=pflash,format=raw,file=$OVMF_DIR/OVMF_VARS.fd \
     -drive file=$DISK_IMG,format=raw \
     -boot menu=on \
     -net none \
-    -d int \
-    -serial file:debug/serial.log
+    -monitor stdio \
+    -serial file:debug/serial.log \
+    -d int,cpu_reset \
+    -D debug/qemu.log \
+    -qmp unix:/tmp/qmp.sock,server,nowait

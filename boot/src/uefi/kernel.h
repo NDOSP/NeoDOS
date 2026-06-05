@@ -36,6 +36,7 @@ typedef struct {
     UINT64 fontScale;
     UINTN memoryBitmapAddress;
     UINT64 memoryBitmapPages;
+    UINTN pageAllocatorTemporaryMemory; // 4 PAGES ALWAYS
     MEMORY_MAP map;
 } BOOT_INFO;
 

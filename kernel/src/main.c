@@ -1,6 +1,7 @@
 #include "bootinfo.h"
 #include "video.h"
-#include "memory.h"
+#include "memory/vmm.h"
+#include "memory/paging.h"
 #include "interrupts/idt.h"
 #include "tss.h"
 #include "acpi.h"
@@ -17,6 +18,5 @@ void kmain() {
     
     idtInit();
     acpiInit();
-
     asm volatile("hlt");
 }

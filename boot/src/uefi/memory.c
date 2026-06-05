@@ -132,7 +132,7 @@ EFI_STATUS allocateMemoryBitmap(PAGETABLEENTRY (*pml4)[512], UINTN* memoryBitmap
         if (EFI_ERROR(Status)) return Status;
     }
 
-    SetMem((VOID*)bitmapAddr, pages * EFI_PAGE_SIZE, 0);
+    SetMem((VOID*)bitmapAddr, pages * EFI_PAGE_SIZE, 0xFF);
 
     *memoryBitmapAddress = (UINTN)bitmapAddr;
     *memoryBitmapPages = pages;
@@ -141,19 +141,26 @@ EFI_STATUS allocateMemoryBitmap(PAGETABLEENTRY (*pml4)[512], UINTN* memoryBitmap
 }
 
 EFI_STATUS fillMemoryBitmap(UINTN memoryBitmapAddress, MEMORY_MAP* map) {
-    if (memoryBitmapAddress == 0) return EFI_INVALID_PARAMETER;
+    if (memoryBitmapAddress == 0 || map == NULL) return EFI_INVALID_PARAMETER;
 
-    UINT64 pageIndex = 0;
     for (UINTN i = 0; i < map->numberOfEntries; i++) {
-        UINT64 numPages = map->entries[i].size / EFI_PAGE_SIZE;
-        for (UINT64 p = 0; p < numPages; p++, pageIndex++) {
-            UINT64 byteIndex = pageIndex / 8;
-            UINT8 bitIndex = pageIndex % 8;
-            UINT8* byte = (UINT8*)(UINTN)memoryBitmapAddress + byteIndex;
+        MEMORY_MAP_ENTRY* entry = &map->entries[i];
+        if (entry->type != EfiConventionalMemory) continue;
 
-            *byte |= (1 << bitIndex);
+        UINT64 firstPage = entry->address / EFI_PAGE_SIZE;
+        UINT64 numPages  = entry->size    / EFI_PAGE_SIZE;
+        for (UINT64 p = 0; p < numPages; p++) {
+            UINT64 page = firstPage + p;
+
+            UINT64 byteIndex = page / 8;
+            UINT8  bitIndex  = page % 8;
+
+            UINT8* byte = (UINT8*)(UINTN)memoryBitmapAddress + byteIndex;
+            *byte &= ~(1 << bitIndex);
         }
     }
+
+    ((UINT8*)(UINTN)memoryBitmapAddress)[0] |= 0x01;
 
     return EFI_SUCCESS;
 }

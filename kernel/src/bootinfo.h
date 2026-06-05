@@ -74,6 +74,7 @@ typedef struct {
     uint64_t fontScale;
     void* memoryBitmapAddress;
     uint64_t memoryBitmapPages;
+    uint64_t* pageAllocatorTemporaryMemory;
     MemoryMap map;
 } BootInfo;
 

@@ -17,6 +17,8 @@ static void markUsed(void* address, size_t numOfPages) {
     }
 }
 
+#include "video.h"
+
 static void* findFreeAddress(size_t numOfPages) {
     if (numOfPages == 0 || bInfo.memoryBitmapAddress == 0) return NULL;
 

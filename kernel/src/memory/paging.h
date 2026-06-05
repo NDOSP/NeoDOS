@@ -5,6 +5,7 @@
 
 #define PAGE_SIZE 4096
 #define RECURSIVE_SLOT 505ULL
+#define TEMP_SLOT 504ULL
 
 #define CANONICAL(addr) (((int64_t)((uint64_t)(addr) << 16) >> 16))
 
@@ -34,5 +35,8 @@
 
 #define PAGE_ALIGN_UP(size) ALIGN_UP(size, PAGE_SIZE)
 #define PAGE_ALIGN_DOWN(size) ALIGN_DOWN(size, PAGE_SIZE)
+
+#define TEMP_VADDR_BASE ((uint64_t*)CANONICAL((uint64_t)TEMP_SLOT << 39))
+#define TEMP_VADDR(addr) ((uint64_t*)CANONICAL(((uint64_t)TEMP_SLOT << 39) | ((uint64_t)(PDPT_IDX(addr) << 30)) | ((uint64_t)(PD_IDX(addr) << 21)) | ((uint64_t)(PT_IDX(addr) << 12))))
 
 #endif // PAGING_H
