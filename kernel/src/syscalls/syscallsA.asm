@@ -52,4 +52,4 @@ section .text
         pop rsp
 
         swapgs
-        sysretq
+        sysret

@@ -27,7 +27,7 @@ rm -rf debug/
 mkdir debug/
 
 qemu-system-x86_64 \
-    -m 128m \
+    -m 64m \
     -drive if=pflash,format=raw,readonly=on,file=$OVMF_DIR/OVMF_CODE.fd \
     -drive if=pflash,format=raw,file=$OVMF_DIR/OVMF_VARS.fd \
     -drive file=$DISK_IMG,format=raw \

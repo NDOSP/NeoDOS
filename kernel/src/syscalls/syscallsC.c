@@ -16,7 +16,7 @@ void initSyscalls(uint64_t cpuId, void* kStack) {
     low |= 1;
     asm volatile("wrmsr" : : "a"(low), "d"(high), "c"(MSR_EFER));
 
-    uint64_t star = ((uint64_t)0x18 << 48) | ((uint64_t)0x08 << 32);
+    uint64_t star = ((uint64_t)0x08 << 32) | ((uint64_t)0x20 << 48);
     asm volatile("wrmsr" : : "a"((uint32_t)star), "d"((uint32_t)(star >> 32)), "c"(MSR_STAR));
 
     uint64_t lstar = (uint64_t)syscall_entry;
