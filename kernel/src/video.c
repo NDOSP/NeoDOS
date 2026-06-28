@@ -1,4 +1,5 @@
 #include "video.h"
+#include "lock.h"
 #include "memory/memutils.h"
 
 static FontGlyph* findGlyph(char c) {
@@ -55,8 +56,10 @@ void drawString(const char* str, uint32_t x, uint32_t y, VideoColor color) {
 
 static uint32_t Posx = 0;
 static uint32_t Posy = 0;
+Spinlock drawOutput_lock = {0};
 
 void drawOutput(const char* str, VideoColor color) {
+    lock(&drawOutput_lock);
     if (!str) return;
 
     while (*str) {
@@ -99,13 +102,17 @@ static inline uint32_t colorToUint32(VideoColor c, int format) {
     return 0;
 }
 
+Spinlock putPixel_lock = {0};
 void putPixel(uint32_t x, uint32_t y, VideoColor color) {
+    lock(&putPixel_lock);
     if (x >= bInfo.fb.fbWidth) return;
     if (y >= bInfo.fb.fbHeight) return;
 
     uint32_t* fbPtr = (uint32_t*)bInfo.fb.fbPtr;
     uint64_t pos = x + y * bInfo.fb.fbWidth;
     fbPtr[pos] = colorToUint32(color, bInfo.fb.pixelFormat);
+
+    unlock(&putPixel_lock);
 }
 
 void cleanScreen(VideoColor color) {

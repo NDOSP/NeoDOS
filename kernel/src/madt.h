@@ -2,6 +2,7 @@
 #define MADT_H
 
 #include <stdint.h>
+#include "acpi.h"
 
 typedef struct {
     AcpiSdtHeader header;
