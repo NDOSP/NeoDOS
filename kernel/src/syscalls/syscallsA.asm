@@ -29,7 +29,11 @@ section .text
         push r14
         push r15
 
-        mov rdi, rax
+        mov rdi, rax        ; num
+        mov rsi, [rsp + 88] ; arg1 = user rdi
+        mov rdx, [rsp + 80] ; arg2 = user rsi
+        mov rcx, [rsp + 72] ; arg3 = user rdx
+        mov r8, rsp         ; arg4 = pointer to SyscallFrame
         call syscallDispatcher
 
         pop r15

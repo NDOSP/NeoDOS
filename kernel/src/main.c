@@ -50,10 +50,10 @@ void kmain() {
     DEBUG_INFO("initializing syscalls");
     initSyscalls(0, (void*)tss[0].rsp0 + 0x1000);
 
-    // initAPs(); // TODO: fix SMP init with BSP LAPIC init
-
     DEBUG_INFO("initializing BSP LAPIC");
     lapic_init();
+
+    initAPs();
 
     DEBUG_INFO("initializing scheduler");
     schedulerInit();

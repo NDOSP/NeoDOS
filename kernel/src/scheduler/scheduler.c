@@ -6,6 +6,7 @@
 #include "memory/memutils.h"
 #include "debug.h"
 #include "string.h"
+#include "syscalls/syscalls.h"
 
 extern void idt32Stub(void);
 extern void registerInterruptHandler(uint8_t n, void (*h)(INTERRUPT_FRAME*));
@@ -112,4 +113,86 @@ Task* createTask(void (*entry)(void), const char* name) {
 
     DEBUG_INFO("SCHED: task '%s' created (id=%lu)", name, id);
     return task;
+}
+
+uint64_t forkTask(const SyscallFrame* sf) {
+    if (taskCount >= MAX_TASKS) return -1;
+
+    uint64_t id = taskCount++;
+    Task* child = &taskPool[id];
+    child->id = id;
+    child->state = TASK_READY;
+    child->ticksLeft = TIME_SLICE;
+    child->cr3 = 0;
+
+    for (uint32_t i = 0; i < sizeof(child->name) - 1 && currentTask->name[i]; i++)
+        child->name[i] = currentTask->name[i];
+    child->name[sizeof(child->name) - 1] = '\0';
+
+    void* stack = pmmAllocator(4);
+    if (!stack) return -1;
+    addPageRange((uint64_t)stack, 4 * PAGE_SIZE, (uint64_t)stack, PAGE_PRESENT | PAGE_WRITE);
+
+    INTERRUPT_FRAME* f = &child->frame;
+    memset(f, 0, sizeof(INTERRUPT_FRAME));
+    f->cs = 0x08;
+    f->ss = 0x10;
+    f->rflags = sf->rflags | 0x200;
+    f->rip = sf->rip;
+    f->rsp = (uint64_t)stack + 4 * PAGE_SIZE;
+    f->rax = 0;
+    f->r15 = sf->r15;
+    f->r14 = sf->r14;
+    f->r13 = sf->r13;
+    f->r12 = sf->r12;
+    f->r10 = sf->r10;
+    f->r9  = sf->r9;
+    f->r8  = sf->r8;
+    f->rdi = sf->rdi;
+    f->rsi = sf->rsi;
+    f->rbp = sf->rbp;
+    f->rbx = sf->rbx;
+    f->rdx = sf->rdx;
+
+    if (!readyHead) {
+        readyHead = child;
+        child->next = child;
+        child->prev = child;
+    } else {
+        Task* last = readyHead->prev;
+        child->next = readyHead;
+        child->prev = last;
+        last->next = child;
+        readyHead->prev = child;
+    }
+
+    DEBUG_INFO("SCHED: fork -> child pid=%lu", id);
+    return id;
+}
+
+void exitTask(void) {
+    DEBUG_INFO("SCHED: task '%s' (pid=%lu) exiting", currentTask->name, currentTask->id);
+    currentTask->state = TASK_DEAD;
+    currentTask->prev->next = currentTask->next;
+    currentTask->next->prev = currentTask->prev;
+
+    while (1) {
+        asm volatile("hlt");
+    }
+}
+
+Task* findTask(uint64_t pid) {
+    if (pid == 0) return currentTask;
+    if (pid >= MAX_TASKS) return NULL;
+    Task* t = &taskPool[pid];
+    if (t->state == TASK_DEAD) return NULL;
+    return t;
+}
+
+uint64_t getCurrentPid(void) {
+    return currentTask ? currentTask->id : 0;
+}
+
+Task* getCurrentTask(void) {
+    return currentTask;
 }

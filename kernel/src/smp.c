@@ -133,11 +133,11 @@ void initAPs(void) {
 
         DEBUG_INFO("SMP: Sending SIPI...");
         lapic_sendIPI(apicId, ICR_DELIVERY_SIPI | (TRAMPOLINE_ADDR >> 12));
-        for (volatile int d = 0; d < 100000; d) asm volatile("pause");
+        for (volatile int d = 0; d < 100000; d++) asm volatile("pause");
 
         DEBUG_INFO("SMP: Sending SIPI again...");
         lapic_sendIPI(apicId, ICR_DELIVERY_SIPI | (TRAMPOLINE_ADDR >> 12));
-        for (volatile int d = 0; d < 100000; d) asm volatile("pause");
+        for (volatile int d = 0; d < 100000; d++) asm volatile("pause");
 
         DEBUG_INFO("SMP: Waiting for CPU...");
         for (int timeout = 0; timeout < 50000000; timeout++) {

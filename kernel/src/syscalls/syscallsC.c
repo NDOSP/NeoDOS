@@ -1,5 +1,7 @@
 #include "syscalls.h"
-#include "video.h"
+#include "scheduler/scheduler.h"
+#include "ipc/ipc.h"
+#include "memory/memutils.h"
 
 extern void syscall_entry(void); 
 PerCpuData perCpuArray[255];
@@ -25,8 +27,40 @@ void initSyscalls(uint64_t cpuId, void* kStack) {
     asm volatile("wrmsr" : : "a"(0x200), "d"(0), "c"(MSR_SFMASK));
 }
 
-void syscallDispatcher(uint64_t num, uint64_t arg1) {
-    if (num == 1) {
-        drawOutput("Hello, user space World!\n", white);
+uint64_t syscallDispatcher(uint64_t num, uint64_t arg1, uint64_t arg2, uint64_t arg3, SyscallFrame* sf) {
+    (void)arg1;
+    (void)arg2;
+    (void)arg3;
+
+    switch (num) {
+    case SYSCALL_EXIT:
+        exitTask();
+        return 0;
+
+    case SYSCALL_FORK:
+        return forkTask(sf);
+
+    case SYSCALL_SEND: {
+        uint64_t buf[IPC_MSG_SIZE / 8];
+        memcpy((void*)buf, (void*)arg2, IPC_MSG_SIZE);
+        return ipcSendPid(arg1, getCurrentPid(), buf);
+    }
+
+    case SYSCALL_RECV: {
+        uint64_t senderPid;
+        uint64_t buf[IPC_MSG_SIZE / 8];
+        int ret = ipcRecv(buf, &senderPid);
+        if (ret == 0) {
+            memcpy((void*)arg1, (void*)buf, IPC_MSG_SIZE);
+            return senderPid;
+        }
+        return -1;
+    }
+
+    case SYSCALL_WHO:
+        return getCurrentPid();
+
+    default:
+        return -1;
     }
 }
