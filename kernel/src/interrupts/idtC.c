@@ -26,6 +26,7 @@ extern void idt18Stub(void);
 extern void idt19Stub(void);
 extern void idt20Stub(void);
 extern void idt21Stub(void);
+extern void idt32Stub(void);
 
 __attribute__((aligned(16))) static IdtEntry idt[256];
 static IdtPtr idtp = { .limit = sizeof(idt) - 1, .base = (uint64_t)&idt[0] };

@@ -39,6 +39,7 @@ section .text
     ISR_NOERRCODE 19 ; SIMD Floating-Point Exception
     ISR_NOERRCODE 20 ; Virtualization Exception
     ISR_ERRCODE 21 ; Control Protection Exception
+    ISR_NOERRCODE 32 ; Timer (LAPIC)
 
     global idtDefaultStub
     idtDefaultStub:

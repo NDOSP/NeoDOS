@@ -10,21 +10,27 @@
 #include "smp.h"
 #include "serial.h"
 #include "debug.h"
+#include "scheduler/scheduler.h"
+#include "interrupts/lapic.h"
 
 extern void loadGdt(uint64_t);
 extern void jumpToUserMode(void*, void*);
 
 __attribute__((section(".bootinfo"))) BootInfo bInfo;
 
-void user_test() {
-    asm volatile(
-        "mov $1, %%rax\n"
-        "syscall\n"
-        : : : "rax", "rcx", "r11"
-    );
-
+static void taskA(void) {
+    serial_printf("TASK-A: started!\n");
     while (1) {
-        asm volatile("nop");
+        drawOutput("A", green);
+        for (volatile uint64_t i = 0; i < 2000000; i++) asm volatile("nop");
+    }
+}
+
+static void taskB(void) {
+    serial_printf("TASK-B: started!\n");
+    while (1) {
+        drawOutput("B", blue);
+        for (volatile uint64_t i = 0; i < 2000000; i++) asm volatile("nop");
     }
 }
 
@@ -41,15 +47,22 @@ void kmain() {
     idtInit();
     DEBUG_INFO("initializing ACPI");
     acpiInit();
-    void* myKstack = allocatePages(4, PAGE_PRESENT | PAGE_WRITE);
     DEBUG_INFO("initializing syscalls");
     initSyscalls(0, (void*)tss[0].rsp0 + 0x1000);
 
-    initAPs();
-    
-    DEBUG_INFO("starting user mode");
-    void* userStack = allocatePages(2, PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
-    void* userCode = (void*)0x1000000;
-    addPage((uint64_t)userCode, (uint64_t)vmtoPm((uint64_t)user_test), PAGE_PRESENT | PAGE_USER);
-    jumpToUserMode(userCode, (void*)((uint64_t)userStack + 2 * PAGE_SIZE));
+    // initAPs(); // TODO: fix SMP init with BSP LAPIC init
+
+    DEBUG_INFO("initializing BSP LAPIC");
+    lapic_init();
+
+    DEBUG_INFO("initializing scheduler");
+    schedulerInit();
+    createTask(taskA, "taskA");
+    createTask(taskB, "taskB");
+    DEBUG_INFO("scheduler ready, enabling interrupts");
+
+    asm volatile("sti");
+    while (1) {
+        asm volatile("hlt");
+    }
 }
