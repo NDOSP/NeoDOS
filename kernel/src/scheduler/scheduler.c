@@ -8,6 +8,8 @@
 #include "string.h"
 #include "syscalls/syscalls.h"
 
+extern uint64_t _reg_timerHz;
+
 extern void idt32Stub(void);
 extern void registerInterruptHandler(uint8_t n, void (*h)(INTERRUPT_FRAME*));
 extern void idtSetEntry(uint8_t num, void (*handler)(void), uint8_t type_attr, uint8_t ist);
@@ -67,7 +69,8 @@ void schedulerInit(void) {
 
     lapic_write(0x3E0, 0x0B);
     lapic_write(0x320, 32 | (1 << 17) | (1 << 16));
-    lapic_write(0x380, 0x100000);
+    // timer count = (337 * 0x100000) / timerHz
+    lapic_write(0x380, (0x33700000U) / (_reg_timerHz ? _reg_timerHz : 337));
     lapic_write(0x320, 32 | (1 << 17));
 
     DEBUG_INFO("SCHED: initialized");

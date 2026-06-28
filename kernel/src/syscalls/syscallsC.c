@@ -2,6 +2,7 @@
 #include "scheduler/scheduler.h"
 #include "ipc/ipc.h"
 #include "memory/memutils.h"
+#include "elf/elf.h"
 
 extern void syscall_entry(void); 
 PerCpuData perCpuArray[255];
@@ -15,10 +16,10 @@ void initSyscalls(uint64_t cpuId, void* kStack) {
 
     uint32_t low, high;
     asm volatile("rdmsr" : "=a"(low), "=d"(high) : "c"(MSR_EFER));
-    low |= 1;
+    low |= (1 << 11) | 1;
     asm volatile("wrmsr" : : "a"(low), "d"(high), "c"(MSR_EFER));
 
-    uint64_t star = ((uint64_t)0x08 << 32) | ((uint64_t)0x20 << 48);
+    uint64_t star = ((uint64_t)0x08 << 32) | ((uint64_t)0x10 << 48);
     asm volatile("wrmsr" : : "a"((uint32_t)star), "d"((uint32_t)(star >> 32)), "c"(MSR_STAR));
 
     uint64_t lstar = (uint64_t)syscall_entry;
@@ -57,8 +58,22 @@ uint64_t syscallDispatcher(uint64_t num, uint64_t arg1, uint64_t arg2, uint64_t 
         return -1;
     }
 
-    case SYSCALL_WHO:
+    case SYSCALL_GETPID:
         return getCurrentPid();
+
+    case SYSCALL_EXEC: {
+        uint64_t entry, stack;
+        if (elfLoad((void*)arg1, &entry, &stack) < 0)
+            return -1;
+        sf->rip = entry;
+        sf->userRsp = stack;
+        sf->r15 = 0; sf->r14 = 0; sf->r13 = 0; sf->r12 = 0;
+        sf->r11b = 0; sf->r10 = 0; sf->r9 = 0; sf->r8 = 0;
+        sf->rcx2 = 0; sf->rdx = 0; sf->rsi = 0; sf->rdi = 0;
+        sf->rbx = 0; sf->rbp = 0;
+        sf->rflags = 0x202;
+        return 0;
+    }
 
     default:
         return -1;

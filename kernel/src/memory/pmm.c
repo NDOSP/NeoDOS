@@ -17,8 +17,6 @@ static void markUsed(void* address, size_t numOfPages) {
     }
 }
 
-#include "video.h"
-
 static void* findFreeAddress(size_t numOfPages) {
     if (numOfPages == 0 || bInfo.memoryBitmapAddress == 0) return NULL;
 
@@ -58,6 +56,10 @@ void pmmFree(void* address, size_t numOfPages) {
         uint8_t bitIndex = bit % 8;
         bitmap[byteIndex] &= ~(1 << bitIndex);
     }
+}
+
+void pmmMarkUsed(void* address, size_t numOfPages) {
+    markUsed(address, numOfPages);
 }
 
 void* pmmAllocator(size_t numOfPages) {

@@ -105,3 +105,25 @@ EFI_STATUS loadFile(IN CHAR16* path, OUT VOID** data, OUT UINTN* fileSize) {
     Print(L"INFO: (file) Succesfully loaded %s file\n", path);
     return EFI_SUCCESS;
 }
+
+EFI_STATUS loadFilePersistent(IN CHAR16* path, OUT VOID** data, OUT UINTN* fileSize) {
+    VOID* poolData;
+    EFI_STATUS Status = loadFile(path, &poolData, fileSize);
+    if (EFI_ERROR(Status)) return Status;
+
+    UINTN pages = (*fileSize + EFI_PAGE_SIZE - 1) / EFI_PAGE_SIZE;
+    EFI_PHYSICAL_ADDRESS persistentAddr;
+    Status = uefi_call_wrapper(gBS->AllocatePages, 4, AllocateAnyPages, EfiLoaderData, pages, &persistentAddr);
+    if (EFI_ERROR(Status)) {
+        Print(L"ERROR: (file) Failed to allocate persistent pages: %r\n", Status);
+        FreePool(poolData);
+        return Status;
+    }
+
+    CopyMem((VOID*)(UINTN)persistentAddr, poolData, *fileSize);
+    FreePool(poolData);
+    *data = (VOID*)(UINTN)persistentAddr;
+
+    Print(L"INFO: (file) Persistent load of %s at 0x%lX (%lu pages)\n", path, (UINTN)persistentAddr, pages);
+    return EFI_SUCCESS;
+}

@@ -6,5 +6,6 @@
 
 void* pmmAllocator(size_t numOfPages);
 void pmmFree(void* address, size_t numOfPages);
+void pmmMarkUsed(void* address, size_t numOfPages);
 
 #endif // PMM_H

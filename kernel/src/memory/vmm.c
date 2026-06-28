@@ -54,8 +54,6 @@ void tempUnmap(void) {
     refreshTLB((void*)CANONICAL((uint64_t)TEMP_SLOT << 39));
 }
 
-#include "video.h"
-
 void* addPage(uint64_t vaddr, uint64_t paddr, uint64_t flags) {
     if (vaddr % PAGE_SIZE != 0 || paddr % PAGE_SIZE != 0) return NULL;
 

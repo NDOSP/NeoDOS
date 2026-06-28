@@ -1,6 +1,5 @@
 #include "idt.h"
 #include "handlers.h"
-#include "video.h"
 #include "string.h"
 
 extern void idtDefaultStub(void);

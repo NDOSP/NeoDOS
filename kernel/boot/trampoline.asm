@@ -27,33 +27,34 @@ start32:
     or eax, 1 << 5
     mov cr4, eax
 
-    mov eax, [pml4_addr]
+    mov eax, [0x5200]
     mov cr3, eax
 
     mov ecx, 0xC0000080
     rdmsr
-    or eax, 1 << 8
+    or eax, (1 << 8) | (1 << 11)
     wrmsr
 
     mov eax, cr0
     or eax, 1 << 31
     mov cr0, eax
 
-    jmp 0x08:start64
+    jmp 0x18:start64
 
 [BITS 64]
 align 16
 start64:
-    mov rsp, [ap_stack]
-    mov rax, [ap_entry]
+    mov rsp, [0x5204]
+    mov rax, [0x520C]
     call rax
     hlt
 
 align 16
 gdt_start:
-    dq 0
-    dq 0x00AF9A000000FFFF
-    dq 0x00CF92000000FFFF
+    dq 0                      ; Null descriptor
+    dq 0x00CF9A000000FFFF     ; 32-bit code @ 0x08
+    dq 0x00CF92000000FFFF     ; 32-bit data @ 0x10
+    dq 0x00AF9A000000FFFF     ; 64-bit code @ 0x18
 gdt_end:
 
 gdt_ptr:
@@ -61,9 +62,3 @@ gdt_ptr:
     dd 0x5000 + (gdt_start - start16)
 
 times 0x200 - ($ - $$) db 0x00
-
-align 8
-pml4_addr: dd 0
-ap_stack:  dq 0
-ap_entry:  dq 0
-trampoline_end:

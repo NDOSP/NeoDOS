@@ -17,6 +17,11 @@
         "name":"Scale",
         "type":"R_U64",
         "value":2
+      },
+      {
+        "name":"TimerHz",
+        "type":"R_U64",
+        "value":500
       }
     ]
   },

@@ -8,13 +8,13 @@
 #include "interrupts/idt.h"
 #include "interrupts/lapic.h"
 #include "syscalls/syscalls.h"
-#include "video.h"
 #include "lock.h"
 #include "string.h"
 #include "panic.h"
 #include "hal.h"
 #include "serial.h"
 #include "debug.h"
+#include "memory/pmm.h"
 
 extern void loadGdt(uint64_t cpuId);
 extern void idtLoad(void);
@@ -63,9 +63,7 @@ void apEntry(void) {
 
     DEBUG_INFO("SMP: CPU %lX online!", cpuId);
 
-    drawOutput("CPU ", green);
-    drawHex64(cpuId, green);
-    drawOutput(" online!\n", green);
+    serial_printf("SMP: CPU %lu online!\n", cpuId);
 
     asm volatile("sti");
     while (1) {
@@ -77,15 +75,12 @@ void initAPs(void) {
     DEBUG_INFO("SMP: initAPs started");
     if (madtInfo.numCpus <= 1) {
         DEBUG_INFO("SMP: 1 CPU only");
-        drawOutput("SMP: 1 CPU (BSP only)\n", white);
+        serial_printf("SMP: 1 CPU (BSP only)\n");
         return;
     }
 
     DEBUG_INFO("SMP: numCpus=%lX", madtInfo.numCpus);
-
-    drawOutput("SMP: ", white);
-    drawHex64(madtInfo.numCpus, white);
-    drawOutput(" CPUs detected\n", white);
+    serial_printf("SMP: %lu CPUs detected\n", madtInfo.numCpus);
 
     size_t trampSize = (uint64_t)trampoline_end - (uint64_t)trampoline_start;
     DEBUG_INFO("SMP: trampoline size=%lX", trampSize);
@@ -95,6 +90,7 @@ void initAPs(void) {
 
     addPage(TRAMPOLINE_ADDR, TRAMPOLINE_ADDR, PAGE_PRESENT | PAGE_WRITE);
     memcpy((void*)TRAMPOLINE_ADDR, trampoline_start, trampSize);
+    pmmMarkUsed((void*)TRAMPOLINE_ADDR, 1);
     DEBUG_INFO("SMP: trampoline copied");
 
     uint64_t cr3;
@@ -113,10 +109,8 @@ void initAPs(void) {
 
         apStacks[i] = pmmAllocator(4);
         if (!apStacks[i]) {
-            DEBUG_ERROR("SMP: Failed to alloc stack for CPU %lX", i);
-            drawOutput("SMP: Failed to alloc stack for CPU ", red);
-            drawHex64(i, red);
-            drawOutput("\n", red);
+            DEBUG_ERROR("SMP: Failed to alloc stack for CPU %lu", i);
+            serial_printf("SMP: Failed to alloc stack for CPU %lu\n", i);
             continue;
         }
         addPageRange((uint64_t)apStacks[i], 4 * PAGE_SIZE, (uint64_t)apStacks[i], PAGE_PRESENT | PAGE_WRITE);
@@ -146,20 +140,14 @@ void initAPs(void) {
         }
 
         if (cpuOnline[i]) {
-            DEBUG_INFO("SMP: CPU %lX started OK", i);
-            drawOutput("SMP: CPU ", white);
-            drawHex64(i, white);
-            drawOutput(" started\n", white);
+            DEBUG_INFO("SMP: CPU %lu started OK", i);
+            serial_printf("SMP: CPU %lu started\n", i);
         } else {
-            DEBUG_ERROR("SMP: CPU %lX timeout!", i);
-            drawOutput("SMP: CPU ", red);
-            drawHex64(i, red);
-            drawOutput(" timeout!\n", red);
+            DEBUG_ERROR("SMP: CPU %lu timeout!", i);
+            serial_printf("SMP: CPU %lu timeout!\n", i);
         }
     }
 
-    drawOutput("SMP: ", white);
-    drawHex64(madtInfo.numCpus, white);
-    drawOutput(" CPUs ready\n", white);
+    serial_printf("SMP: %lu CPUs ready\n", madtInfo.numCpus);
     DEBUG_INFO("SMP: initAPs done");
 }

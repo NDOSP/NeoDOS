@@ -4,6 +4,7 @@
 #include "memory.h"
 #include "acpi.h"
 #include "nff.h"
+#include "file.h"
 
 extern UINT8 kernelJump_start, kernelJump_end;
 
@@ -89,6 +90,27 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* Syste
 
     Print(L"INFO: (loader) PML4 Address: 0x%lX\n", bInfo.pml4);
 
+    bInfo.registry.data = NULL;
+    bInfo.registry.size = 0;
+    {
+        VOID* regData;
+        UINTN regSize;
+        Status = loadFilePersistent(registryFileAddress, &regData, &regSize);
+        if (EFI_ERROR(Status)) {
+            Print(L"WARNING: (ndr) Failed to load registry: %r\n", Status);
+        } else {
+            UINTN regPages = (regSize + EFI_PAGE_SIZE - 1) / EFI_PAGE_SIZE;
+            for (UINTN i = 0; i < regPages; i++) {
+                UINT64 addr = (UINTN)regData + i * EFI_PAGE_SIZE;
+                Status = addPage(bInfo.pml4, addr, addr, ENTRY_PRESENT | ENTRY_RW);
+                if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
+            }
+            bInfo.registry.data = regData;
+            bInfo.registry.size = regSize;
+        }
+    }
+
+
     Status = setVideoMode(vInfo, &bInfo.fb);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
     if (!((UINTN)bInfo.fb.pixelFormat == (UINTN)PixelBlueGreenRedReserved8BitPerColor || (UINTN)bInfo.fb.pixelFormat == (UINTN)PixelRedGreenBlueReserved8BitPerColor)) errorHandler(EFI_UNSUPPORTED, ImageHandle);
@@ -116,6 +138,8 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* Syste
 
     Status = addPage(bInfo.pml4, (UINT64)&kernelJump_start, (UINT64)&kernelJump_start, ENTRY_PRESENT | ENTRY_RW);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
+
+    bInfo.moduleCount = 0;
 
     Status = allocateMemoryBitmap(bInfo.pml4, &bInfo.memoryBitmapAddress, &bInfo.memoryBitmapPages);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
