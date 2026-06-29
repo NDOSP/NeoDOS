@@ -86,7 +86,8 @@ void idtInit(void) {
 }
 
 void idtHandler(INTERRUPT_FRAME* frame) {
-    InterruptHandler handler = getInterruptHandler(frame->interruptNumber);
+    uint64_t intNum = frame->interruptNumber;
+    InterruptHandler handler = getInterruptHandler(intNum);
     if (handler) {
         handler(frame);
     } else {

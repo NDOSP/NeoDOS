@@ -34,11 +34,15 @@ EFI_STATUS addPage(PAGETABLEENTRY (*pml4)[512], UINT64 vaddr, UINT64 paddr, UINT
     UINT64 pd_i   = PD_IDX(vaddr);
     UINT64 pt_i   = PT_IDX(vaddr);
 
+    UINT64 interm = ENTRY_PRESENT | ENTRY_RW;
+    if (flags & ENTRY_USER) interm |= ENTRY_USER;
+
     if (!((*pml4)[pml4_i] & ENTRY_PRESENT)) {
         Status = initPage(&pdpt);
         if (EFI_ERROR(Status)) return Status;
-
-        (*pml4)[pml4_i] = ((UINT64)pdpt & ENTRY_ADDR_MASK) | ENTRY_PRESENT | ENTRY_RW;
+        (*pml4)[pml4_i] = ((UINT64)pdpt & ENTRY_ADDR_MASK) | interm;
+    } else if (flags & ENTRY_USER) {
+        (*pml4)[pml4_i] |= ENTRY_USER;
     }
     
     pdpt = (PAGETABLEENTRY (*)[512])((*pml4)[pml4_i] & ENTRY_ADDR_MASK);
@@ -46,18 +50,19 @@ EFI_STATUS addPage(PAGETABLEENTRY (*pml4)[512], UINT64 vaddr, UINT64 paddr, UINT
     if (!((*pdpt)[pdpt_i] & ENTRY_PRESENT)) {
         Status = initPage(&pd);
         if (EFI_ERROR(Status)) return Status;
-
-        (*pdpt)[pdpt_i] = ((UINT64)pd & ENTRY_ADDR_MASK) | ENTRY_PRESENT | ENTRY_RW;
+        (*pdpt)[pdpt_i] = ((UINT64)pd & ENTRY_ADDR_MASK) | interm;
+    } else if (flags & ENTRY_USER) {
+        (*pdpt)[pdpt_i] |= ENTRY_USER;
     }
     
     pd = (PAGETABLEENTRY (*)[512])((*pdpt)[pdpt_i] & ENTRY_ADDR_MASK);
-    
 
     if (!((*pd)[pd_i] & ENTRY_PRESENT)) {
         Status = initPage(&pt);
         if (EFI_ERROR(Status)) return Status;
-
-        (*pd)[pd_i] = ((UINT64)pt & ENTRY_ADDR_MASK) | ENTRY_PRESENT | ENTRY_RW;
+        (*pd)[pd_i] = ((UINT64)pt & ENTRY_ADDR_MASK) | interm;
+    } else if (flags & ENTRY_USER) {
+        (*pd)[pd_i] |= ENTRY_USER;
     }
 
     pt = (PAGETABLEENTRY (*)[512])((*pd)[pd_i] & ENTRY_ADDR_MASK);

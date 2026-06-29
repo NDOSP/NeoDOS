@@ -55,8 +55,8 @@ EFI_STATUS loadElf(CHAR16* path, KERNEL_INFO* info) {
     Elf64_Phdr *pheaders = (Elf64_Phdr *)(fileData + ehdr.e_phoff);
     for (int i = 0; i < ehdr.e_phnum; i++) {
         Elf64_Phdr phdr = pheaders[i];
-        if (phdr.p_filesz == 0 || phdr.p_memsz == 0) {
-            Print(L"WARNING: (kernel) Empty program header(p_type=0x%04X; p_offset=0x%08X; p_filesz=0x%08X; p_memsz=0x%08X), skipping...\n", phdr.p_type, phdr.p_offset, phdr.p_filesz, phdr.p_memsz);
+        if (phdr.p_filesz == 0 && phdr.p_memsz == 0) {
+            Print(L"INFO: (kernel) Empty program header(p_type=0x%04X; p_offset=0x%08X; p_filesz=0x%08X; p_memsz=0x%08X), skipping...\n", phdr.p_type, phdr.p_offset, phdr.p_filesz, phdr.p_memsz);
             continue;
         }
 

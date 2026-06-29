@@ -1,7 +1,9 @@
 #include "syscalls.h"
 #include "scheduler/scheduler.h"
 #include "ipc/ipc.h"
-#include "memory/memutils.h"
+#include "memory/pmm.h"
+#include "memory/vmm.h"
+#include "memory/paging.h"
 #include "serial.h"
 
 extern void syscall_entry(void); 
@@ -29,22 +31,23 @@ void initSyscalls(uint64_t cpuId, void* kStack) {
 }
 
 uint64_t syscallDispatcher(uint64_t num, uint64_t arg1, uint64_t arg2, uint64_t arg3, SyscallFrame* sf) {
-    (void)arg1;
-    (void)arg2;
-    (void)arg3;
+    (void)sf;
 
     switch (num) {
     case SYSCALL_EXIT:
         exitTask();
         return 0;
 
-    case SYSCALL_FORK:
-        return forkTask(sf);
+    case SYSCALL_FORK: {
+        uint64_t child = forkTask(sf);
+        return child;
+    }
 
     case SYSCALL_SEND: {
         uint64_t buf[IPC_MSG_SIZE / 8];
         memcpy((void*)buf, (void*)arg2, IPC_MSG_SIZE);
-        return ipcSendPid(arg1, getCurrentPid(), buf);
+        uint64_t sender = getCurrentPid();
+        return ipcSendPid(arg1, sender, buf);
     }
 
     case SYSCALL_RECV: {
@@ -61,7 +64,26 @@ uint64_t syscallDispatcher(uint64_t num, uint64_t arg1, uint64_t arg2, uint64_t 
     case SYSCALL_GETPID:
         return getCurrentPid();
 
-    // TODO: Remove SYSCALL_WRITE
+    case SYSCALL_ALLOC_PAGES: {
+        uint64_t n = arg1;
+        if (n == 0 || n > 256) return -1;
+        void* phys = pmmAllocator(n);
+        if (!phys) return -1;
+        addPageRange((uint64_t)phys, n * 4096, (uint64_t)phys,
+                     PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
+        memset(phys, 0, n * 4096);
+        return (uint64_t)phys;
+    }
+
+    case SYSCALL_FREE_PAGES: {
+        uint64_t phys = arg1;
+        uint64_t n = arg2;
+        if (n == 0 || n > 256) return -1;
+        freePages((void*)phys, n);
+        pmmFree((void*)phys, n);
+        return 0;
+    }
+
     case SYSCALL_WRITE: {
         char buf[256];
         uint64_t len = arg2 > 255 ? 255 : arg2;

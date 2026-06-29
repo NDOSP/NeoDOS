@@ -29,9 +29,14 @@ typedef struct {
 typedef struct {
     VOID*  data;
     UINT64 size;
+    CHAR8  name[32];
 } LOADED_FILE;
 
 typedef struct {
+    UINT64 initEntry;
+    LOADED_FILE modules[16];
+    UINT64 moduleCount;
+    // --- kernel-private fields below ---
     PAGETABLEENTRY (*pml4)[512];
     UINT64  stackCount;
     VIDEO_FRAMEBUFFER fb;
@@ -44,8 +49,6 @@ typedef struct {
     UINTN pageAllocatorTemporaryMemory; // 4 PAGES ALWAYS
     MEMORY_MAP map;
     LOADED_FILE registry;
-    LOADED_FILE modules[16];
-    UINT64 moduleCount;
 } BOOT_INFO;
 
 EFI_STATUS loadElf(CHAR16* path, KERNEL_INFO* info);

@@ -74,6 +74,18 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* Syste
     Status = loadElf(ConfigNodeGetStr16(tree[0], (CHAR8*)"Bootloader/KernelLocation", L"\\NEODOS\\KERNEL.BIN"), &bInfo.kInfo);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
 
+    KERNEL_INFO initInfo = {0};
+    bInfo.initEntry = 0;
+    Status = loadElf(L"\\NEODOS\\INIT.ELF", &initInfo);
+    if (Status == EFI_NOT_FOUND) {
+        Print(L"WARNING: \\NEODOS\\INIT.ELF not found\n");
+    } else if (EFI_ERROR(Status)) {
+        Print(L"WARNING: Failed to load \\NEODOS\\INIT.ELF: %r\n", Status);
+    } else {
+        bInfo.initEntry = initInfo.entryPoint;
+        Print(L"INFO: Loaded INIT.ELF, entry=0x%lX\n", initInfo.entryPoint);
+    }
+
     Status = findACPI(&bInfo.rsdp);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
 
@@ -133,6 +145,18 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* Syste
         if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
     }
 
+    for (UINTN i = 0; i < initInfo.segmentCount; i++) {
+        MAPPING_INFO* mapping = &initInfo.segmentMapping[i];
+        UINT64 flags = ENTRY_PRESENT | ENTRY_USER;
+        if (mapping->flags & PF_W) flags |= ENTRY_RW;
+        if (!(mapping->flags & PF_X)) flags |= ENTRY_EXEC_DISABLE;
+
+        for (UINT64 offset = 0; offset < mapping->size; offset += EFI_PAGE_SIZE) {
+            Status = addPage(bInfo.pml4, mapping->vaddr + offset, mapping->paddr + offset, flags);
+            if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
+        }
+    }
+
     Status = mapKernelSpace(bInfo.pml4, &bInfo.kInfo, &bInfo.fb, maxCPU, bInfo.font);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
 
@@ -140,6 +164,67 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* Syste
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
 
     bInfo.moduleCount = 0;
+    {
+        EFI_SIMPLE_FILE_SYSTEM_PROTOCOL* fs;
+        Status = LibLocateProtocol(&gEfiSimpleFileSystemProtocolGuid, (VOID**)&fs);
+        if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
+
+        EFI_FILE_PROTOCOL* root;
+        Status = uefi_call_wrapper(fs->OpenVolume, 2, fs, &root);
+        if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
+
+        EFI_FILE_PROTOCOL* dir;
+        Status = uefi_call_wrapper(root->Open, 5, root, &dir, L"\\NEODOS\\MODULES", EFI_FILE_MODE_READ, 0);
+        if (EFI_ERROR(Status)) {
+            Print(L"WARNING: No \\NEODOS\\MODULES directory\n");
+        } else {
+            while (bInfo.moduleCount < 16) {
+                UINT8 buf[sizeof(EFI_FILE_INFO) + 256];
+                UINTN bufSize = sizeof(buf);
+                Status = uefi_call_wrapper(dir->Read, 3, dir, &bufSize, buf);
+                if (EFI_ERROR(Status) || bufSize == 0) break;
+
+                EFI_FILE_INFO* fi = (EFI_FILE_INFO*)buf;
+                if (fi->Attribute & EFI_FILE_DIRECTORY) continue;
+
+                CHAR16 path[256];
+                SPrint(path, 256, L"\\NEODOS\\MODULES\\%s", fi->FileName);
+
+                VOID* modData;
+                UINTN modSize;
+                Status = loadFilePersistent(path, &modData, &modSize);
+                if (EFI_ERROR(Status)) {
+                    Print(L"WARNING: Failed to load '%s': %r\n", fi->FileName, Status);
+                    continue;
+                }
+
+                UINTN modPages = (modSize + EFI_PAGE_SIZE - 1) / EFI_PAGE_SIZE;
+                for (UINTN p = 0; p < modPages; p++) {
+                    UINT64 addr = (UINTN)modData + p * EFI_PAGE_SIZE;
+                    Status = addPage(bInfo.pml4, addr, addr, ENTRY_PRESENT | ENTRY_RW | ENTRY_USER);
+                    if (EFI_ERROR(Status)) break;
+                }
+                if (EFI_ERROR(Status)) {
+                    Print(L"WARNING: Failed to map '%s' pages\n", fi->FileName);
+                    continue;
+                }
+
+                bInfo.modules[bInfo.moduleCount].data = modData;
+                bInfo.modules[bInfo.moduleCount].size = modSize;
+                // Store module name (UCS-2 -> ASCII)
+                {
+                    INTN ni;
+                    for (ni = 0; ni < 31 && fi->FileName[ni]; ni++)
+                        bInfo.modules[bInfo.moduleCount].name[ni] = (CHAR8)fi->FileName[ni];
+                    bInfo.modules[bInfo.moduleCount].name[ni] = '\0';
+                }
+                bInfo.moduleCount++;
+                Print(L"INFO: Loaded module '%s' (%lu bytes)\n", fi->FileName, modSize);
+            }
+            uefi_call_wrapper(dir->Close, 1, dir);
+        }
+        uefi_call_wrapper(root->Close, 1, root);
+    }
 
     Status = allocateMemoryBitmap(bInfo.pml4, &bInfo.memoryBitmapAddress, &bInfo.memoryBitmapPages);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);

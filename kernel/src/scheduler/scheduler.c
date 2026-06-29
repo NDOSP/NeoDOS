@@ -8,7 +8,8 @@
 #include "string.h"
 #include "syscalls/syscalls.h"
 
-extern uint64_t _reg_timerHz;
+// Default timer frequency for LAPIC timer
+#define DEFAULT_TIMER_HZ 337
 
 extern void idt32Stub(void);
 extern void registerInterruptHandler(uint8_t n, void (*h)(INTERRUPT_FRAME*));
@@ -48,15 +49,17 @@ void timerHandler(INTERRUPT_FRAME* frame) {
     if (--currentTask->ticksLeft > 0) return;
     currentTask->ticksLeft = TIME_SLICE;
 
+    if (currentTask->state != TASK_BLOCKED) {
+        currentTask->state = TASK_READY;
+        currentTask->frame = *frame;
+    } else {
+        uint64_t savedRax = currentTask->frame.rax;
+        currentTask->frame = *frame;
+        currentTask->frame.rax = savedRax;
+    }
+
     Task* next = pickNext();
     if (!next || next == currentTask) return;
-
-    DEBUG_INFO("SCHED: switching %s(rip=%lX cs=%lX rflags=%lX) -> %s(rip=%lX cs=%lX rflags=%lX)",
-        currentTask->name, currentTask->frame.rip, currentTask->frame.cs, currentTask->frame.rflags,
-        next->name, next->frame.rip, next->frame.cs, next->frame.rflags);
-
-    currentTask->state = TASK_READY;
-    currentTask->frame = *frame;
 
     next->state = TASK_RUNNING;
     *frame = next->frame;
@@ -74,7 +77,7 @@ void schedulerInit(void) {
     lapic_write(0x3E0, 0x0B);
     lapic_write(0x320, 32 | (1 << 17) | (1 << 16));
     // timer count = (337 * 0x100000) / timerHz
-    lapic_write(0x380, (0x33700000U) / (_reg_timerHz ? _reg_timerHz : 337));
+    lapic_write(0x380, (0x33700000U) / DEFAULT_TIMER_HZ);
     lapic_write(0x320, 32 | (1 << 17));
 
     DEBUG_INFO("SCHED: initialized");
@@ -175,14 +178,19 @@ uint64_t forkTask(const SyscallFrame* sf) {
         child->name[i] = currentTask->name[i];
     child->name[sizeof(child->name) - 1] = '\0';
 
+    uint64_t parentCs = currentTask->frame.cs;
+    int isUser = (parentCs == 0x2B || currentTask->frame.ss == 0x23);
+
     void* stack = pmmAllocator(4);
     if (!stack) return -1;
-    addPageRange((uint64_t)stack, 4 * PAGE_SIZE, (uint64_t)stack, PAGE_PRESENT | PAGE_WRITE);
+    uint64_t stackFlags = PAGE_PRESENT | PAGE_WRITE;
+    if (isUser) stackFlags |= PAGE_USER;
+    addPageRange((uint64_t)stack, 4 * PAGE_SIZE, (uint64_t)stack, stackFlags);
 
     INTERRUPT_FRAME* f = &child->frame;
     memset(f, 0, sizeof(INTERRUPT_FRAME));
-    f->cs = 0x10;
-    f->ss = 0x18;
+    f->cs = isUser ? 0x2B : 0x10;
+    f->ss = isUser ? 0x23 : 0x18;
     f->rflags = sf->rflags | 0x200;
     f->rip = sf->rip;
     f->rsp = (uint64_t)stack + 4 * PAGE_SIZE;

@@ -67,9 +67,14 @@ typedef struct {
 typedef struct {
     void*  data;
     uint64_t size;
+    char   name[32];
 } LoadedFile;
 
 typedef struct {
+    uint64_t initEntry;
+    LoadedFile modules[16];
+    uint64_t moduleCount;
+    // --- kernel-private fields below ---
     uint64_t* pml4;
     uint64_t stackCount;
     VideoFramebuffer fb;
@@ -82,8 +87,6 @@ typedef struct {
     uint64_t* pageAllocatorTemporaryMemory;
     MemoryMap map;
     LoadedFile registry;
-    LoadedFile modules[16];
-    uint64_t moduleCount;
 } BootInfo;
 
 extern BootInfo bInfo;

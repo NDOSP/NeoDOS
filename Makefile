@@ -1,8 +1,10 @@
-.PHONY: all boot bios_error image tools clean run kernel
+.PHONY: all boot bios_error image tools clean run kernel modules
 
 BUILD_DIR := build
+MOD_DIR   := $(BUILD_DIR)/MODULES
 DISK_IMG  := $(BUILD_DIR)/disk.img
 BIOS_ERROR := $(BUILD_DIR)/bioserr.bin
+MOD_BINS  := $(wildcard $(MOD_DIR)/*.mod)
 
 all: boot bios_error image
 
@@ -16,6 +18,10 @@ boot: | build
 tools: | build
 	$(MAKE) -C tools
 	cp -r tools/build/* build/
+
+modules: | build
+	$(MAKE) -C modules all
+	@mkdir -p $(MOD_DIR)
 
 build:
 	@mkdir -p build
@@ -43,11 +49,19 @@ image: kernel boot tools modules bios_error
 	FAT_IMG=build/fatpart.img; \
 	dd if=/dev/zero of=$$FAT_IMG bs=1M count=60 status=progress 2>&1; \
 	mkfs.vfat -F32 -n EFI $$FAT_IMG >/dev/null 2>&1; \
+	MOD_PAIRS=""; \
+	for m in $(MOD_BINS); do \
+		name=$$(basename $$m); \
+		MOD_PAIRS="$$MOD_PAIRS $$m=NEODOS/MODULES/$$name"; \
+	done; \
+	INIT_PAIR=""; \
+	if [ -f build/INIT.ELF ]; then INIT_PAIR="build/INIT.ELF=NEODOS/INIT.ELF"; fi; \
 	python3 populate_fat.py $$FAT_IMG \
 		build/BOOTX64.EFI=EFI/BOOT/BOOTX64.EFI \
 		build/OSDATA.NDR=NEODOS/OSDATA.NDR \
 		build/NEOKRN.ELF=NEODOS/NEOKRN.ELF \
-		build/FONT.NFF=NEODOS/FONT.NFF && \
+		build/FONT.NFF=NEODOS/FONT.NFF \
+		$$MOD_PAIRS $$INIT_PAIR && \
 	dd if=$$FAT_IMG of=$(DISK_IMG) bs=512 seek=2048 conv=notrunc status=progress 2>&1; \
 	rm -f $$FAT_IMG
 
