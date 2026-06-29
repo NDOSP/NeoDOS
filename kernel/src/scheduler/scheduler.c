@@ -51,6 +51,10 @@ void timerHandler(INTERRUPT_FRAME* frame) {
     Task* next = pickNext();
     if (!next || next == currentTask) return;
 
+    DEBUG_INFO("SCHED: switching %s(rip=%lX cs=%lX rflags=%lX) -> %s(rip=%lX cs=%lX rflags=%lX)",
+        currentTask->name, currentTask->frame.rip, currentTask->frame.cs, currentTask->frame.rflags,
+        next->name, next->frame.rip, next->frame.cs, next->frame.rflags);
+
     currentTask->state = TASK_READY;
     currentTask->frame = *frame;
 
@@ -61,7 +65,7 @@ void timerHandler(INTERRUPT_FRAME* frame) {
 }
 
 void schedulerInit(void) {
-    idtSetEntry(32, idt32Stub, 0x8E, 2);
+    idtSetEntry(32, idt32Stub, 0x8E, 0);
     registerInterruptHandler(32, timerHandler);
 
     currentTask = createTask(idleTask, "idle");
@@ -74,6 +78,21 @@ void schedulerInit(void) {
     lapic_write(0x320, 32 | (1 << 17));
 
     DEBUG_INFO("SCHED: initialized");
+}
+
+void addTaskToReadyQueue(Task* task) {
+    // Add task to ready queue
+    if (!readyHead) {
+        readyHead = task;
+        task->next = task;
+        task->prev = task;
+    } else {
+        Task* last = readyHead->prev;
+        task->next = readyHead;
+        task->prev = last;
+        last->next = task;
+        readyHead->prev = task;
+    }
 }
 
 Task* createTask(void (*entry)(void), const char* name) {
@@ -96,27 +115,51 @@ Task* createTask(void (*entry)(void), const char* name) {
     addPageRange((uint64_t)stack, 4 * PAGE_SIZE, (uint64_t)stack, PAGE_PRESENT | PAGE_WRITE);
 
     memset(&task->frame, 0, sizeof(INTERRUPT_FRAME));
-    task->frame.cs = 0x08;
-    task->frame.ss = 0x10;
+    task->frame.cs = 0x10;
+    task->frame.ss = 0x18;
     task->frame.rflags = 0x202;
     task->frame.rip = (uint64_t)entry;
     task->frame.rsp = (uint64_t)stack + 4 * PAGE_SIZE;
 
-    if (!readyHead) {
-        readyHead = task;
-        task->next = task;
-        task->prev = task;
-    } else {
-        Task* last = readyHead->prev;
-        task->next = readyHead;
-        task->prev = last;
-        last->next = task;
-        readyHead->prev = task;
-    }
+    addTaskToReadyQueue(task);
 
     DEBUG_INFO("SCHED: task '%s' created (id=%lu)", name, id);
     return task;
 }
+
+Task* createUserTask(void (*entry)(void), const char* name) {
+    if (taskCount >= MAX_TASKS) return NULL;
+
+    uint64_t id = taskCount++;
+    Task* task = &taskPool[id];
+    task->id = id;
+    task->state = TASK_READY;
+    task->ticksLeft = TIME_SLICE;
+    task->cr3 = 0;
+
+    uint32_t i;
+    for (i = 0; i < sizeof(task->name) - 1 && name[i]; i++)
+        task->name[i] = name[i];
+    task->name[i] = '\0';
+
+    // User task stack will be provided by the ELF loader, so we don't allocate here
+    // We just initialize the frame with user-mode selectors
+    memset(&task->frame, 0, sizeof(INTERRUPT_FRAME));
+    task->frame.cs = 0x2B;  // User code selector (index 5, RPL=3)
+    task->frame.ss = 0x23;  // User data selector (index 4, RPL=3)
+    task->frame.rflags = 0x202;
+    task->frame.rip = (uint64_t)entry;
+    task->frame.rsp = 0;  // Will be set by caller
+
+    // DO NOT add to ready queue yet - caller needs to set rip/rsp first
+    task->next = NULL;
+    task->prev = NULL;
+
+    DEBUG_INFO("SCHED: user task '%s' created (id=%lu)", name, id);
+    return task;
+}
+
+
 
 uint64_t forkTask(const SyscallFrame* sf) {
     if (taskCount >= MAX_TASKS) return -1;
@@ -138,8 +181,8 @@ uint64_t forkTask(const SyscallFrame* sf) {
 
     INTERRUPT_FRAME* f = &child->frame;
     memset(f, 0, sizeof(INTERRUPT_FRAME));
-    f->cs = 0x08;
-    f->ss = 0x10;
+    f->cs = 0x10;
+    f->ss = 0x18;
     f->rflags = sf->rflags | 0x200;
     f->rip = sf->rip;
     f->rsp = (uint64_t)stack + 4 * PAGE_SIZE;

@@ -7,16 +7,16 @@ section .text
     jumpToUserMode:
         cli
 
-        mov ax, 0x1B
+        mov ax, 0x23
         mov ds, ax
         mov es, ax
         mov fs, ax
         mov gs, ax
 
-        push 0x1B
+        push 0x23
         push rsi
         push 0x202
-        push 0x23
+        push 0x2B
         push rdi
 
         iretq

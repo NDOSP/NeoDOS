@@ -13,10 +13,10 @@
 
 #define SYSCALL_EXIT   1
 #define SYSCALL_FORK   2
-#define SYSCALL_EXEC   3
-#define SYSCALL_GETPID 4
-#define SYSCALL_SEND   5
-#define SYSCALL_RECV   6
+#define SYSCALL_GETPID 3
+#define SYSCALL_SEND   4
+#define SYSCALL_RECV   5
+#define SYSCALL_WRITE  0xFF00000000000001
 
 typedef struct SyscallFrame {
     uint64_t r15, r14, r13, r12, r11b, r10, r9, r8;

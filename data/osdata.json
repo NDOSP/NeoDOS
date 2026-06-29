@@ -1,49 +1,21 @@
 [
-  {
-    "name": "SystemConfig",
-    "type": "R_NODE",
-    "value": [
-      {
-        "name":"Width",
-        "type":"R_U64",
-        "value":600
-      },
-      {
-        "name":"Height",
-        "type":"R_U64",
-        "value":480
-      },
-      {
-        "name":"Scale",
-        "type":"R_U64",
-        "value":2
-      },
-      {
-        "name":"TimerHz",
-        "type":"R_U64",
-        "value":500
-      }
-    ]
-  },
-  {
-    "name": "Bootloader",
-    "type": "R_NODE",
-    "value": [
-      {
-        "name":"KernelLocation",
-        "type":"R_STR16",
-        "value":"\\NEODOS\\NEOKRN.ELF\u0000"
-      },
-      {
-        "name":"MaxCPU",
-        "type":"R_U64",
-        "value":8
-      },
-      {
-        "name":"FontLocation",
-        "type":"R_STR16",
-        "value":"\\NEODOS\\FONT.NFF\u0000"
-      }
-    ]
-  }
+    {"name": "SystemConfig", "type": "R_NODE", "value": 
+        [
+            {"name": "TimerHz", "type": "R_U64", "value": 500}
+        ]
+    },
+    {"name": "Bootloader", "type": "R_NODE", "value": 
+        [
+            {"name": "KernelLocation", "type": "R_STR16", "value": "\\NEODOS\\NEOKRN.ELF\u0000"},
+            {"name": "MaxCPU", "type": "R_U64", "value": 8},
+            {"name": "FontLocation", "type": "R_STR16", "value": "\\NEODOS\\FONT.NFF\u0000"}
+        ]
+    },
+    {"name": "Display", "type": "R_NODE", "value":
+        [
+            {"name": "Width", "type": "R_U64", "value": 600},
+            {"name": "Height", "type": "R_U64", "value": 480},
+            {"name": "Scale", "type": "R_U64", "value": 2}
+        ]
+    }
 ]

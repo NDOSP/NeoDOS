@@ -11,22 +11,23 @@ SECTIONS {
     . = 0xFFFFFFFF80000000;
 
     .text : ALIGN(4K) {
-        KEEP(*(.text*))
-        . = ALIGN(16);
+        *(.text*)
     } :text
 
     .data : ALIGN(4K) {
-        KEEP(*(.data*))
-        . = ALIGN(16);
-        KEEP(*(.rodata*))
-        . = ALIGN(16);
-        KEEP(*(.bss*))
-        *(COMMON)
-        . = ALIGN(16);
+        *(.data*)
     } :data
+
+    .bss (NOLOAD) : ALIGN(4K) {
+        *(.bss*)
+        *(COMMON)
+    } :data
+
+    .rodata : ALIGN(4K) {
+        *(.rodata*)
+    } :text
 
     .bootinfo : ALIGN(4K) {
         KEEP(*(.bootinfo*))
-        . = ALIGN(16);
     } :bootinfo
 }

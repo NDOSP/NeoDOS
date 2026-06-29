@@ -117,12 +117,12 @@ EFI_STATUS map_core_stacks(PAGETABLEENTRY (*pml4)[512], UINT64 maxCpu) {
     EFI_STATUS Status;
     UINT64 coreStackVaddr = (UINT64)(-(INT64)EFI_PAGE_SIZE);
 
-    for (UINT64 i = 0; i < (maxCpu * 3) + 1; i++) {
+    for (UINT64 i = 0; i < maxCpu * 4; i++) {
         void* coreStack;
         Status = uefi_call_wrapper(BS->AllocatePages, 4, AllocateAnyPages, EfiLoaderData, 1, &coreStack);
         if (EFI_ERROR(Status)) return Status;
 
-        Status = addPage(pml4, coreStackVaddr - i * 2 * EFI_PAGE_SIZE, (UINT64)coreStack, ENTRY_PRESENT | ENTRY_RW | ENTRY_EXEC_DISABLE);
+        Status = addPage(pml4, coreStackVaddr - i * EFI_PAGE_SIZE, (UINT64)coreStack, ENTRY_PRESENT | ENTRY_RW | ENTRY_EXEC_DISABLE);
         if (EFI_ERROR(Status)) return Status;
     }
 

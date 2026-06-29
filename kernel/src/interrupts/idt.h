@@ -34,14 +34,11 @@ typedef struct __attribute__((packed)) {
     uint64_t rdx;
     uint64_t rcx;
     uint64_t rax;
-
     uint64_t interruptNumber;
     uint64_t error;
-
     uint64_t rip;
     uint64_t cs;
     uint64_t rflags;
-
     uint64_t rsp;
     uint64_t ss;
 } INTERRUPT_FRAME;

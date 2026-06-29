@@ -56,4 +56,5 @@ section .text
         pop rsp
 
         swapgs
+        db 0x48
         sysret

@@ -5,7 +5,7 @@ CC := gcc
 AS := nasm
 LD := ld
 
-CFLAGS := -ffreestanding -O2 -Wall -Wextra -nostdlib -nostartfiles -Isrc/
+CFLAGS := -ffreestanding -O2 -Wall -Wextra -nostdlib -nostartfiles -Isrc/ -MMD -MP
 ASFLAGS := -f elf64
 LDFLAGS := -T linker.ld -nostdlib
 
@@ -16,6 +16,7 @@ C_OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(C_SOURCES))
 ASM_OBJECTS := $(patsubst $(SRC_DIR)/%.asm,$(BUILD_DIR)/%.o,$(ASM_SOURCES))
 
 OBJECTS := $(C_OBJECTS) $(ASM_OBJECTS)
+DEPS := $(C_OBJECTS:.o=.d)
 
 TRAMPOLINE_BIN := $(BUILD_DIR)/trampoline.bin
 
@@ -35,6 +36,8 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.asm
 	mkdir -p $(dir $@)
 	$(AS) $(ASFLAGS) $< -o $@
+
+-include $(DEPS)
 
 # smp_asm.asm incbin requires trampoline.bin to exist first
 $(BUILD_DIR)/smp_asm.o: $(TRAMPOLINE_BIN)

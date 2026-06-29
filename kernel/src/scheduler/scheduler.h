@@ -45,6 +45,8 @@ typedef struct Task {
 
 void schedulerInit(void);
 Task* createTask(void (*entry)(void), const char* name);
+Task* createUserTask(void (*entry)(void), const char* name);
+void addTaskToReadyQueue(Task* task);
 Task* findTask(uint64_t pid);
 uint64_t getCurrentPid(void);
 Task* getCurrentTask(void);

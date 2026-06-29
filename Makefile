@@ -6,18 +6,21 @@ BIOS_ERROR := $(BUILD_DIR)/bioserr.bin
 
 all: boot bios_error image
 
-kernel:
+kernel: | build
 	$(MAKE) -C kernel
 	cp kernel/build/kernel.elf build/NEOKRN.ELF
 
-boot:
+boot: | build
 	$(MAKE) -C boot
 
-tools:
+tools: | build
 	$(MAKE) -C tools
 	cp -r tools/build/* build/
 
-image: kernel boot tools bios_error
+build:
+	@mkdir -p build
+
+image: kernel boot tools modules bios_error
 	@mkdir -p $(BUILD_DIR)
 	
 	dd if=/dev/zero of=$(DISK_IMG) bs=1M count=64 status=progress
@@ -37,26 +40,16 @@ image: kernel boot tools bios_error
 	./build/nffcreator data.json build/FONT.NFF
 	rm -rf data.json
 	
-	@sudo bash -c '\
-		LOOP=$$(losetup -f --show -o 1048576 $(DISK_IMG) 2>/dev/null); \
-		if [ -z "$$LOOP" ]; then \
-			LOOP=$$(losetup -f --show --partscan $(DISK_IMG)); \
-			LOOP=$${LOOP}p1; \
-		fi; \
-		mkfs.vfat -F32 -n EFI $$LOOP >/dev/null 2>&1; \
-		mkdir -p $(BUILD_DIR)/mnt; \
-		mount $$LOOP $(BUILD_DIR)/mnt 2>/dev/null; \
-		mkdir -p $(BUILD_DIR)/mnt/EFI/BOOT; \
-		mkdir -p $(BUILD_DIR)/mnt/NEODOS; \
-		cp $(BUILD_DIR)/BOOTX64.EFI $(BUILD_DIR)/mnt/EFI/BOOT/BOOTX64.EFI; \
-		cp $(BUILD_DIR)/OSDATA.NDR $(BUILD_DIR)/mnt/NEODOS/OSDATA.NDR; \
-		cp $(BUILD_DIR)/NEOKRN.ELF $(BUILD_DIR)/mnt/NEODOS/NEOKRN.ELF; \
-		cp $(BUILD_DIR)/FONT.NFF $(BUILD_DIR)/mnt/NEODOS/FONT.NFF; \
-		sync; \
-		umount $(BUILD_DIR)/mnt 2>/dev/null; \
-		losetup -d $$LOOP 2>/dev/null || true; \
-		rmdir $(BUILD_DIR)/mnt 2>/dev/null || true; \
-	'
+	FAT_IMG=build/fatpart.img; \
+	dd if=/dev/zero of=$$FAT_IMG bs=1M count=60 status=progress 2>&1; \
+	mkfs.vfat -F32 -n EFI $$FAT_IMG >/dev/null 2>&1; \
+	python3 populate_fat.py $$FAT_IMG \
+		build/BOOTX64.EFI=EFI/BOOT/BOOTX64.EFI \
+		build/OSDATA.NDR=NEODOS/OSDATA.NDR \
+		build/NEOKRN.ELF=NEODOS/NEOKRN.ELF \
+		build/FONT.NFF=NEODOS/FONT.NFF && \
+	dd if=$$FAT_IMG of=$(DISK_IMG) bs=512 seek=2048 conv=notrunc status=progress 2>&1; \
+	rm -f $$FAT_IMG
 
 clean:
 	$(MAKE) -C boot clean

@@ -24,20 +24,20 @@ void initTss(void) {
         tss[cpuId].reserved2 = 0;
         tss[cpuId].reserved3 = 0;
 
-        tss[cpuId].rsp0 = 0xFFFFFFFFFFFFFFF0 - (cpuId * 3 + 1) * PAGE_SIZE;
+        tss[cpuId].rsp0 = 0xFFFFFFFFFFFFFFF0 - (cpuId * 4 + 1) * PAGE_SIZE;
         tss[cpuId].rsp1 = 0;
         tss[cpuId].rsp2 = 0;
         tss[cpuId].io_map_base = sizeof(TSS);
 
-        tss[cpuId].ist1 = 0xFFFFFFFFFFFFFFF0 - (cpuId * 3 + 1) * 2 * PAGE_SIZE - PAGE_SIZE; // #DF
-        tss[cpuId].ist2 = 0xFFFFFFFFFFFFFFF0 - (cpuId * 3 + 1) * 2 * PAGE_SIZE - 2 * PAGE_SIZE; // Other Interrupts
+        tss[cpuId].ist1 = 0xFFFFFFFFFFFFFFF0 - (cpuId * 4 + 2) * PAGE_SIZE; // #DF
+        tss[cpuId].ist2 = 0xFFFFFFFFFFFFFFF0 - (cpuId * 4 + 3) * PAGE_SIZE; // Other Interrupts
         tss[cpuId].ist3 = 0;
         tss[cpuId].ist4 = 0;
         tss[cpuId].ist5 = 0;
         tss[cpuId].ist6 = 0;
         tss[cpuId].ist7 = 0;
 
-        GdtTssEntry* e = (GdtTssEntry*)&gdt64[5 + cpuId * 2];
+        GdtTssEntry* e = (GdtTssEntry*)&gdt64[8 + cpuId * 2];
 
         uint64_t base = (uint64_t)&tss[cpuId];
         uint32_t limit = sizeof(TSS) - 1;

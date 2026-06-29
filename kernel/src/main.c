@@ -1,6 +1,8 @@
 #include "bootinfo.h"
 #include "memory/vmm.h"
+#include "memory/pmm.h"
 #include "memory/paging.h"
+#include "memory/memutils.h"
 #include "interrupts/idt.h"
 #include "tss.h"
 #include "acpi.h"
@@ -14,24 +16,40 @@
 #include "registry/reg.h"
 
 extern void loadGdt(uint64_t);
-extern void jumpToUserMode(void*, void*);
+
+extern char userTaskACodeStart[];
+extern char userTaskACodeEnd[];
+extern char userTaskBCodeStart[];
+extern char userTaskBCodeEnd[];
 
 __attribute__((section(".bootinfo"))) BootInfo bInfo;
 
 uint64_t _reg_timerHz = 337;
 
-static void taskA(void) {
-    serial_printf("TASK-A: started!\n");
-    while (1) {
-        for (volatile uint64_t i = 0; i < 2000000; i++) asm volatile("nop");
-    }
-}
+static Task* createUserModeTask(void* code_start, void* code_end, const char* name) {
+    size_t code_size = (uint8_t*)code_end - (uint8_t*)code_start;
+    size_t code_pages = PAGE_ALIGN_UP(code_size) / PAGE_SIZE;
+    if (code_pages == 0) code_pages = 1;
 
-static void taskB(void) {
-    serial_printf("TASK-B: started!\n");
-    while (1) {
-        for (volatile uint64_t i = 0; i < 2000000; i++) asm volatile("nop");
-    }
+    void* code_phys = pmmAllocator(code_pages);
+    if (!code_phys) return NULL;
+
+    addPageRange((uint64_t)code_phys, code_pages * PAGE_SIZE, (uint64_t)code_phys, PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
+
+    memcpy(code_phys, code_start, code_size);
+
+    size_t stack_pages = 4;
+    void* stack_phys = pmmAllocator(stack_pages);
+    if (!stack_phys) return NULL;
+    addPageRange((uint64_t)stack_phys, stack_pages * PAGE_SIZE, (uint64_t)stack_phys, PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
+
+    Task* task = createUserTask((void (*)(void))code_phys, name);
+    if (!task) return NULL;
+    task->frame.rsp = (uint64_t)stack_phys + stack_pages * PAGE_SIZE;
+    addTaskToReadyQueue(task);
+
+    DEBUG_INFO("USER: task '%s' code=%lu bytes @ %lX stack=%lX", name, code_size, (uint64_t)code_phys, task->frame.rsp);
+    return task;
 }
 
 void kmain() {
@@ -58,8 +76,10 @@ void kmain() {
 
     DEBUG_INFO("initializing scheduler");
     schedulerInit();
-    createTask(taskA, "taskA");
-    createTask(taskB, "taskB");
+
+    createUserModeTask(userTaskACodeStart, userTaskACodeEnd, "taskA");
+    createUserModeTask(userTaskBCodeStart, userTaskBCodeEnd, "taskB");
+
     DEBUG_INFO("scheduler ready, enabling interrupts");
 
     asm volatile("sti");

@@ -65,8 +65,8 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* Syste
     if (EFI_ERROR(Status) && Status != EFI_NOT_FOUND) errorHandler(Status, ImageHandle);
 
     if (Status == EFI_NOT_FOUND) {
-        vInfo.resolution.height = (UINT16)ConfigNodeGetU64(tree[0], (CHAR8*)"SystemConfig/Height", 1920);
-        vInfo.resolution.width = (UINT16)ConfigNodeGetU64(tree[0], (CHAR8*)"SystemConfig/Width", 1080);
+        vInfo.resolution.height = (UINT16)ConfigNodeGetU64(tree[0], (CHAR8*)"Display/Height", 1920);
+        vInfo.resolution.width = (UINT16)ConfigNodeGetU64(tree[0], (CHAR8*)"Display/Width", 1080);
     }
 
     Print(L"INFO: (video) Using resolution %dx%d\n", vInfo.resolution.width, vInfo.resolution.height);
@@ -83,7 +83,7 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* Syste
     Status = loadFont(ConfigNodeGetStr16(tree[0], (CHAR8*)"Bootloader/FontLocation", L"\\NEODOS\\FONT.BLL"), &bInfo.font);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
 
-    bInfo.fontScale = ConfigNodeGetU64(tree[0], (CHAR8*)"SystemConfig/Scale", 1);
+    bInfo.fontScale = ConfigNodeGetU64(tree[0], (CHAR8*)"Display/Scale", 1);
 
     Status = initPage(&bInfo.pml4);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
