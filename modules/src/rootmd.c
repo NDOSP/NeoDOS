@@ -32,37 +32,47 @@ static int get_free_slot() {
 }
 
 void rootmd_main() {
-    // This is a simplified main loop for the rootmd module
-    // In a real scenario, this would be a task that blocks on a syscall
-    // waiting for IPC messages.
-    
     while (1) {
-        uint64_t sender_pid;
-        uint64_t data[4]; // Buffer for IPC data
-        
-        // Assume a syscall like syscall_recv(pid, &sender, data) exists
-        // For the sake of this implementation, we simulate the logic:
-        // int received = syscall(SYSCALL_RECV, ROOTMD_PID, &sender_pid, data);
-        
-        // Simulation of processing a message:
-        uint64_t command = data[0];
-        
+        unsigned char buf[64];
+        unsigned long long sender = recv(buf);
+        if (sender == (unsigned long long)-1) {
+            continue;
+        }
+
+        uint64_t *msg = (uint64_t *)buf;
+        uint64_t command = msg[0];
+
         if (command == ROOTMD_REGISTER) {
-            uint64_t mod_pid = data[1];
-            int slot = get_free_slot();
+            // data: pid (uint64_t) at offset 8, name string after that
+            uint64_t mod_pid = msg[1];
+            char *name_ptr = (char *)(buf + 8 + 8);
+            int slot = find_mod_slot(mod_pid);
+            if (slot == -1) {
+                slot = get_free_slot();
+            }
             if (slot != -1) {
                 registered_mods[slot].pid = mod_pid;
                 registered_mods[slot].active = 1;
-                // In a real system, we would copy the name from the IPC data
+                for (int i = 0; i < MOD_NAME_MAX && name_ptr[i] != '\0'; i++) {
+                    registered_mods[slot].name[i] = name_ptr[i];
+                }
+                registered_mods[slot].name[MOD_NAME_MAX - 1] = '\0';
             }
         } else if (command == ROOTMD_UNREGISTER) {
-            uint64_t mod_pid = data[1];
+            uint64_t mod_pid = msg[1];
             int slot = find_mod_slot(mod_pid);
             if (slot != -1) {
                 registered_mods[slot].active = 0;
             }
         } else if (command == ROOTMD_LIST) {
-            // Logic to iterate through registered_mods and send a list back to sender
+            uint64_t active_count = 0;
+            for (int i = 0; i < MAX_REGISTERED_MODS; i++) {
+                if (registered_mods[i].active) {
+                    active_count++;
+                }
+            }
+            uint64_t response = active_count;
+            send(sender, &response);
         }
     }
 }
