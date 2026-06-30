@@ -48,6 +48,7 @@ typedef struct Task {
     int isModule;              // 1 if this task is a module (can use SYSCALL_MOD)
     Mailbox mailbox;
     INTERRUPT_FRAME frame;
+    uint64_t vaddr_next;       // next virtual address for auto-allocation (SYSCALL_ALLOC_PAGES)
 } Task;
 
 void schedulerInit(void);

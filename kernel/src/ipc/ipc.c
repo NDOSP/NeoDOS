@@ -35,6 +35,35 @@ int ipcRecv(uint64_t* data, uint64_t* senderPid) {
     return 0;
 }
 
+int ipcRecvFrom(uint64_t* data, uint64_t* senderPid, uint64_t expectedSender) {
+    Task* self = findTask(0);
+    if (!self) return -1;
+    Mailbox* mb = &self->mailbox;
+    if (mb->head == mb->tail) return -1;
+
+    // Search for a message from expectedSender
+    uint32_t t = mb->tail;
+    while (t != mb->head && mb->msgs[t].senderPid != expectedSender)
+        t = (t + 1) % IPC_MAX_MSG;
+    if (t == mb->head) return -1;
+
+    // Found matching message at position t
+    if (data) memcpy((void*)data, mb->msgs[t].data, IPC_MSG_SIZE);
+    if (senderPid) *senderPid = mb->msgs[t].senderPid;
+
+    // Remove it by shifting subsequent messages back
+    uint32_t next = (t + 1) % IPC_MAX_MSG;
+    while (next != mb->head) {
+        mb->msgs[t] = mb->msgs[next];
+        t = next;
+        next = (next + 1) % IPC_MAX_MSG;
+    }
+    // head moves back by one
+    mb->head = (mb->head - 1 + IPC_MAX_MSG) % IPC_MAX_MSG;
+
+    return 0;
+}
+
 int ipcSendPid(uint64_t destPid, uint64_t senderPid, const uint64_t* data) {
     Task* dest = findTask(destPid);
     if (!dest || dest->state == TASK_DEAD) return -1;

@@ -2,7 +2,7 @@
 
 __attribute__((noreturn, section(".text.start")))
 void _start(void) {
-    debug_puts("INIT: NeoDOS microkernel init started\n");
+    debug_puts("INIT: NeoDOS init started\n");
     
     unsigned long long mypid = mod_syscall(SYSCALL_GETPID, 0, 0, 0);
     char pid_str[32];

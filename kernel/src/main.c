@@ -14,6 +14,7 @@
 #include "scheduler/scheduler.h"
 #include "interrupts/lapic.h"
 #include "modman/modman.h"
+#include "shm/shm.h"
 
 extern void loadGdt(uint64_t);
 
@@ -43,6 +44,7 @@ void kmain() {
 
     DEBUG_INFO("initializing module manager");
     modman_init();
+    shm_init();
 
     if (bInfo.initEntry) {
         size_t stack_pages = 4;

@@ -8,6 +8,7 @@
 #include "string.h"
 #include "syscalls/syscalls.h"
 #include "bootinfo.h"
+#include "modman/modman.h"
 
 // Default timer frequency for LAPIC timer
 #define DEFAULT_TIMER_HZ 337
@@ -174,6 +175,7 @@ Task* createUserTaskPrio(void (*entry)(void), const char* name, uint8_t priority
     task->cr3 = vmm_create_user_pml4();
     task->priority = priority;
     task->isModule = 0;
+    task->vaddr_next = 0x1000000;
 
     uint32_t i;
     for (i = 0; i < sizeof(task->name) - 1 && name[i]; i++)
@@ -210,6 +212,7 @@ uint64_t forkTask(const SyscallFrame* sf) {
     child->cr3 = vmm_create_user_pml4();
     child->priority = currentTask->priority;
     child->isModule = currentTask->isModule;
+    child->vaddr_next = currentTask->vaddr_next;
 
     for (uint32_t i = 0; i < sizeof(child->name) - 1 && currentTask->name[i]; i++)
         child->name[i] = currentTask->name[i];
@@ -413,6 +416,10 @@ void launchModules(void) {
         uint64_t modSize = bInfo.modules[i].size;
         if (!entry) continue;
 
+        // Parse .modinfo header to get entry offset (pid=0 = parse only, no register)
+        uint64_t entry_off = 0;
+        int has_modinfo = (modman_register_embedded(0, entry, modSize, &entry_off) == 0);
+
         // Allocate user stack
         size_t stack_pages = 4;
         void* stack_phys = pmmAllocator(stack_pages);
@@ -421,7 +428,7 @@ void launchModules(void) {
             continue;
         }
 
-        Task* task = createUserTaskPrio((void (*)(void))(uint64_t)entry,
+        Task* task = createUserTaskPrio((void (*)(void))((uint64_t)entry + entry_off),
                                         bInfo.modules[i].name, PRIORITY_NORM);
         if (task) {
             task->isModule = 1;
@@ -434,6 +441,11 @@ void launchModules(void) {
             vmm_map_in_cr3(task->cr3, (uint64_t)stack_phys, stack_pages * PAGE_SIZE,
                            (uint64_t)stack_phys, PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
             task->frame.rsp = (uint64_t)stack_phys + stack_pages * PAGE_SIZE;
+
+            // Register with real PID
+            if (has_modinfo)
+                modman_register_embedded(task->id, entry, modSize, NULL);
+
             addTaskToReadyQueue(task);
             DEBUG_INFO("SCHED: module '%s' launched (entry=%lX, size=%lu, pages=%lu)",
                        bInfo.modules[i].name, (uint64_t)entry, modSize, modPages);

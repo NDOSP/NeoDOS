@@ -105,3 +105,37 @@ int modman_list(ModEntry* entries, int max) {
     }
     return count;
 }
+
+// .modinfo ELF section format (mirrors modules/include/module.h ModInfo)
+#define MODINFO_MAGIC   0x444F4D
+#define MODINFO_VERSION 1
+
+typedef struct {
+    unsigned int magic;
+    unsigned int version;
+    char         name[64];
+    unsigned long long init_off;
+    unsigned long long exit_off;
+    unsigned int dep_count;
+    unsigned int import_count;
+    unsigned long long deps_off;
+    unsigned long long imports_off;
+} __attribute__((packed)) ModInfoHeader;
+
+int modman_register_embedded(uint64_t pid, void* data, uint64_t size, uint64_t* out_entry_off) {
+    if (!initialized || !data) return -1;
+    if (size < sizeof(ModInfoHeader)) return -1;
+
+    ModInfoHeader* mi = (ModInfoHeader*)data;
+    if (mi->magic != MODINFO_MAGIC || mi->version != MODINFO_VERSION) return -1;
+
+    mi->name[63] = '\0';
+    if (out_entry_off)
+        *out_entry_off = (mi->init_off != 0) ? mi->init_off : sizeof(ModInfoHeader);
+
+    if (pid != 0) {
+        modman_register(pid, mi->name);
+        DEBUG_INFO("MODMAN: registered pid=%lu name='%s' from .modinfo", pid, mi->name);
+    }
+    return 0;
+}

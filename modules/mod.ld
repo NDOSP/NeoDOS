@@ -1,9 +1,12 @@
 OUTPUT_FORMAT(elf64-x86-64)
 ENTRY(_start)
 
-SECTIONS
-{
+SECTIONS {
     . = 0;
+
+    .modinfo : {
+        KEEP(*(.modinfo))
+    }
 
     .text : {
         *(.text.start)

@@ -59,9 +59,78 @@ uint64_t vmm_create_user_pml4(void) {
     if (!new_pml4_phys) return 0;
 
     void* new_pml4_vaddr = tempMap((void*)new_pml4_phys);
+    memset(new_pml4_vaddr, 0, PAGE_SIZE);
+
     uint64_t* current_pml4 = PML4_VADDR;
 
-    memcpy(new_pml4_vaddr, current_pml4, PAGE_SIZE);
+    // Shallow-copy kernel-range entries (256-511) — shared with kernel
+    for (int i = 256; i < 512; i++)
+        ((uint64_t*)new_pml4_vaddr)[i] = current_pml4[i];
+
+    // Deep-copy user-range entries (0-255) so each task has private page tables
+    for (int i = 0; i < 256; i++) {
+        if (!(current_pml4[i] & PAGE_PRESENT)) continue;
+
+        uint64_t pdpt_flags = current_pml4[i] & ~ENTRY_ADDR_MASK;
+
+        uint64_t new_pdpt_phys = (uint64_t)pmmAllocator(1);
+        if (!new_pdpt_phys) continue;
+
+        tempUnmap();
+        void* new_pdpt_vaddr = tempMap((void*)new_pdpt_phys);
+        memset(new_pdpt_vaddr, 0, PAGE_SIZE);
+
+        uint64_t* kernel_pdpt = PDPT_VADDR(i);
+        for (int j = 0; j < 512; j++) {
+            if (!(kernel_pdpt[j] & PAGE_PRESENT)) continue;
+
+            if (kernel_pdpt[j] & PAGE_PAGE_SIZE) {
+                ((uint64_t*)new_pdpt_vaddr)[j] = kernel_pdpt[j];
+                continue;
+            }
+
+            uint64_t pd_flags = kernel_pdpt[j] & ~ENTRY_ADDR_MASK;
+
+            uint64_t new_pd_phys = (uint64_t)pmmAllocator(1);
+            if (!new_pd_phys) continue;
+
+            tempUnmap();
+            void* new_pd_vaddr = tempMap((void*)new_pd_phys);
+            memset(new_pd_vaddr, 0, PAGE_SIZE);
+
+            uint64_t* kernel_pd = PD_VADDR(i, j);
+            for (int k = 0; k < 512; k++) {
+                if (!(kernel_pd[k] & PAGE_PRESENT)) continue;
+
+                if (kernel_pd[k] & PAGE_PAGE_SIZE) {
+                    ((uint64_t*)new_pd_vaddr)[k] = kernel_pd[k];
+                    continue;
+                }
+
+                uint64_t pt_flags = kernel_pd[k] & ~ENTRY_ADDR_MASK;
+
+                uint64_t new_pt_phys = (uint64_t)pmmAllocator(1);
+                if (!new_pt_phys) continue;
+
+                tempUnmap();
+                void* new_pt_vaddr = tempMap((void*)new_pt_phys);
+                uint64_t* kernel_pt = PT_VADDR(i, j, k);
+                memcpy(new_pt_vaddr, kernel_pt, PAGE_SIZE);
+                tempUnmap();
+
+                new_pd_vaddr = tempMap((void*)new_pd_phys);
+                ((uint64_t*)new_pd_vaddr)[k] = (new_pt_phys & ENTRY_ADDR_MASK) | pt_flags;
+            }
+
+            tempUnmap();
+            new_pdpt_vaddr = tempMap((void*)new_pdpt_phys);
+            ((uint64_t*)new_pdpt_vaddr)[j] = (new_pd_phys & ENTRY_ADDR_MASK) | pd_flags;
+        }
+
+        tempUnmap();
+        new_pml4_vaddr = tempMap((void*)new_pml4_phys);
+        ((uint64_t*)new_pml4_vaddr)[i] = (new_pdpt_phys & ENTRY_ADDR_MASK) | pdpt_flags;
+    }
 
     ((uint64_t*)new_pml4_vaddr)[RECURSIVE_SLOT] = (new_pml4_phys & ENTRY_ADDR_MASK) | PAGE_PRESENT | PAGE_WRITE;
 

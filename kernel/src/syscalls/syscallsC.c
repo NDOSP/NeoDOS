@@ -6,6 +6,7 @@
 #include "memory/paging.h"
 #include "memory/memutils.h"
 #include "modman/modman.h"
+#include "shm/shm.h"
 #include "bootinfo.h"
 #include "serial.h"
 
@@ -33,8 +34,9 @@ void initSyscalls(uint64_t cpuId, void* kStack) {
     asm volatile("wrmsr" : : "a"(0x200), "d"(0), "c"(MSR_SFMASK));
 }
 
-uint64_t syscallDispatcher(uint64_t num, uint64_t arg1, uint64_t arg2, uint64_t arg3, SyscallFrame* sf) {
+uint64_t syscallDispatcher(uint64_t num, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4, SyscallFrame* sf) {
     (void)sf;
+    (void)arg4;
 
     switch (num) {
     case SYSCALL_EXIT:
@@ -64,25 +66,52 @@ uint64_t syscallDispatcher(uint64_t num, uint64_t arg1, uint64_t arg2, uint64_t 
         return schedulerBlockAndSwitch(sf);
     }
 
+    case SYSCALL_RECV_FROM: {
+        uint64_t expected = arg1;
+        uint64_t senderPid;
+        uint64_t buf[IPC_MSG_SIZE / 8];
+        int ret = ipcRecvFrom(buf, &senderPid, expected);
+        if (ret == 0) {
+            memcpy((void*)arg2, (void*)buf, IPC_MSG_SIZE);
+            return senderPid;
+        }
+        return schedulerBlockAndSwitch(sf);
+    }
+
     case SYSCALL_GETPID:
         return getCurrentPid();
 
     case SYSCALL_ALLOC_PAGES: {
         uint64_t n = arg1;
+        uint64_t vaddr = arg2;
         if (n == 0 || n > 256) return -1;
+        uint64_t size = n * PAGE_SIZE;
+
         void* phys = pmmAllocator(n);
         if (!phys) return -1;
-        uint64_t size = n * 4096;
         uint64_t paddr = (uint64_t)phys;
-        addPageRange(paddr, size, paddr,
-                     PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
+
         Task* tsk = getCurrentTask();
-        if (tsk && tsk->cr3) {
-            vmm_map_in_cr3(tsk->cr3, paddr, size, paddr,
-                           PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
+        if (!tsk) { pmmFree(phys, n); return -1; }
+
+        if (vaddr == 0) {
+            vaddr = tsk->vaddr_next;
+            tsk->vaddr_next += size;
         }
-        memset(phys, 0, size);
-        return (uint64_t)phys;
+
+        if (tsk->cr3) {
+            vmm_map_in_cr3(tsk->cr3, vaddr, size, paddr,
+                           PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
+        } else {
+            addPageRange(vaddr, size, paddr, PAGE_PRESENT | PAGE_WRITE);
+        }
+
+        for (uint64_t off = 0; off < size; off += PAGE_SIZE) {
+            void* tmp = tempMap((void*)(paddr + off));
+            memset(tmp, 0, PAGE_SIZE);
+            tempUnmap();
+        }
+        return vaddr;
     }
 
     case SYSCALL_FREE_PAGES: {
@@ -94,6 +123,29 @@ uint64_t syscallDispatcher(uint64_t num, uint64_t arg1, uint64_t arg2, uint64_t 
         return 0;
     }
 
+    case SYSCALL_SHM: {
+        uint64_t sub = arg1;
+        switch (sub) {
+        case SHM_CREATE: {
+            uint64_t pages = arg2;
+            return shm_create(pages);
+        }
+        case SHM_ATTACH: {
+            uint64_t handle = arg2;
+            uint64_t vaddr;
+            if (shm_attach(handle, &vaddr) == 0)
+                return vaddr;
+            return -1ULL;
+        }
+        case SHM_DETACH: {
+            uint64_t handle = arg2;
+            return shm_detach(handle);
+        }
+        default:
+            return -1ULL;
+        }
+    }
+
     case SYSCALL_WRITE: {
         char buf[256];
         uint64_t len = arg2 > 255 ? 255 : arg2;
@@ -101,17 +153,6 @@ uint64_t syscallDispatcher(uint64_t num, uint64_t arg1, uint64_t arg2, uint64_t 
         buf[len] = '\0';
         serial_puts(buf);
         return len;
-    }
-
-    case SYSCALL_MOD_REGISTER: {
-        const char* name = (const char*)arg1;
-        uint64_t pid = getCurrentPid();
-        return modman_register(pid, name);
-    }
-
-    case SYSCALL_MOD_UNREGISTER: {
-        uint64_t pid = getCurrentPid();
-        return modman_unregister(pid);
     }
 
     case SYSCALL_MOD_LIST: {
@@ -127,18 +168,20 @@ uint64_t syscallDispatcher(uint64_t num, uint64_t arg1, uint64_t arg2, uint64_t 
         uint64_t sub = arg1;
 
         switch (sub) {
-        case 1: { // PHYS_MAP
+        case 1: { // PHYS_MAP(paddr, pages, vaddr)  vaddr=0 → identity
             uint64_t paddr = arg2 & ~0xFFFULL;
             uint64_t pages = arg3;
+            uint64_t vaddr = arg4;
             if (pages == 0 || pages > 65536) return -1ULL;
+            if (vaddr == 0) vaddr = paddr; // identity map
             uint64_t size = pages * PAGE_SIZE;
-            void* ret = addPageRange(paddr, size, paddr,
+            void* ret = addPageRange(vaddr, size, paddr,
                                      PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
             if (ret && task->cr3) {
-                vmm_map_in_cr3(task->cr3, paddr, size, paddr,
+                vmm_map_in_cr3(task->cr3, vaddr, size, paddr,
                                PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
             }
-            return ret ? paddr : -1ULL;
+            return ret ? vaddr : -1ULL;
         }
 
         case 2: { // BOOTINFO
@@ -264,6 +307,52 @@ uint64_t syscallDispatcher(uint64_t num, uint64_t arg1, uint64_t arg2, uint64_t 
                 }
             }
             return -1ULL;
+        }
+
+        case 5: { // PHYS_ADDR(vaddr) → paddr
+            uint64_t vaddr = arg2;
+            uint64_t paddr = vmtoPm(vaddr);
+            return paddr ? paddr : -1ULL;
+        }
+
+        case 6: { // REP_INSW(port, buf_phys, words)
+            uint16_t port = arg2 & 0xFFFF;
+            uint64_t buf_phys = arg3;
+            uint64_t words = arg4;
+            if (words == 0 || words > 65536) return -1ULL;
+            uint64_t off = 0;
+            while (words > 0) {
+                uint64_t page_off = (buf_phys + off) & 0xFFF;
+                uint64_t paddr = (buf_phys + off) & ~0xFFFULL;
+                void* vaddr = tempMap((void*)paddr);
+                uint64_t chunk = (PAGE_SIZE - page_off) / 2;
+                if (chunk > words) chunk = words;
+                asm volatile("rep insw" : : "d"(port), "D"((uint8_t*)vaddr + page_off), "c"(chunk) : "memory");
+                tempUnmap();
+                off += chunk * 2;
+                words -= chunk;
+            }
+            return 0;
+        }
+
+        case 7: { // REP_OUTSW(port, buf_phys, words)
+            uint16_t port = arg2 & 0xFFFF;
+            uint64_t buf_phys = arg3;
+            uint64_t words = arg4;
+            if (words == 0 || words > 65536) return -1ULL;
+            uint64_t off = 0;
+            while (words > 0) {
+                uint64_t page_off = (buf_phys + off) & 0xFFF;
+                uint64_t paddr = (buf_phys + off) & ~0xFFFULL;
+                void* vaddr = tempMap((void*)paddr);
+                uint64_t chunk = (PAGE_SIZE - page_off) / 2;
+                if (chunk > words) chunk = words;
+                asm volatile("rep outsw" : : "d"(port), "S"((uint8_t*)vaddr + page_off), "c"(chunk) : "memory");
+                tempUnmap();
+                off += chunk * 2;
+                words -= chunk;
+            }
+            return 0;
         }
 
         default:
