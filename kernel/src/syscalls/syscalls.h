@@ -20,6 +20,16 @@
 // Memory management
 #define SYSCALL_ALLOC_PAGES 6
 #define SYSCALL_FREE_PAGES  7
+// Module management
+#define SYSCALL_MOD_REGISTER   10
+#define SYSCALL_MOD_UNREGISTER 11
+#define SYSCALL_MOD_LIST       12
+// Module-only syscall (requires task->isModule == 1)
+//   sub=1: PHYS_MAP  (arg2=paddr, arg3=pages       -> vaddr)
+//   sub=2: BOOTINFO  (arg2=type|size<<32, arg3=buf  -> bytes)
+//   sub=3: BOOTINFO_SIZE (arg2=type                 -> size)
+//   sub=4: PORT_IO   (arg2=port|w<<16|d<<24, arg3=val -> in val / 0)
+#define SYSCALL_MOD            20
 // Debug
 #define SYSCALL_WRITE       0xFF00000000000001
 

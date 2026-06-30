@@ -1,10 +1,10 @@
-.PHONY: all boot bios_error image tools clean run kernel modules
+.PHONY: all boot bios_error image tools clean run kernel modules init
 
 BUILD_DIR := build
 MOD_DIR   := $(BUILD_DIR)/MODULES
 DISK_IMG  := $(BUILD_DIR)/disk.img
 BIOS_ERROR := $(BUILD_DIR)/bioserr.bin
-MOD_BINS  := $(wildcard $(MOD_DIR)/*.mod)
+MOD_BINS   = $(wildcard $(MOD_DIR)/*.mod)
 
 all: boot bios_error image
 
@@ -19,6 +19,9 @@ tools: | build
 	$(MAKE) -C tools
 	cp -r tools/build/* build/
 
+init: | build
+	$(MAKE) -C init all
+
 modules: | build
 	$(MAKE) -C modules all
 	@mkdir -p $(MOD_DIR)
@@ -26,7 +29,7 @@ modules: | build
 build:
 	@mkdir -p build
 
-image: kernel boot tools modules bios_error
+image: kernel boot tools modules init bios_error
 	@mkdir -p $(BUILD_DIR)
 	
 	dd if=/dev/zero of=$(DISK_IMG) bs=1M count=64 status=progress
@@ -68,6 +71,8 @@ image: kernel boot tools modules bios_error
 clean:
 	$(MAKE) -C boot clean
 	$(MAKE) -C kernel clean
+	$(MAKE) -C modules clean
+	$(MAKE) -C init clean
 	rm -f $(DISK_IMG) $(BIOS_ERROR)
 	rm -rf $(BUILD_DIR)
 

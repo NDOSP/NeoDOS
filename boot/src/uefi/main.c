@@ -122,47 +122,6 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* Syste
         }
     }
 
-
-    Status = setVideoMode(vInfo, &bInfo.fb);
-    if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
-    if (!((UINTN)bInfo.fb.pixelFormat == (UINTN)PixelBlueGreenRedReserved8BitPerColor || (UINTN)bInfo.fb.pixelFormat == (UINTN)PixelRedGreenBlueReserved8BitPerColor)) errorHandler(EFI_UNSUPPORTED, ImageHandle);
-
-    (*bInfo.pml4)[RECURSIVE_PML4_IDX] = ((UINTN)bInfo.pml4 & ENTRY_ADDR_MASK) | ENTRY_PRESENT | ENTRY_RW;
-
-    UINTN pagesRsdp = (align_up(bInfo.rsdp->Length, EFI_PAGE_SIZE)) / EFI_PAGE_SIZE;
-    for (UINTN i = 0; i < pagesRsdp; i++) {
-        UINT64 addr = ((UINT64)bInfo.rsdp & ENTRY_ADDR_MASK) + i * EFI_PAGE_SIZE;
-        Status = addPage(bInfo.pml4, addr, addr, ENTRY_PRESENT | ENTRY_RW);
-        if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
-    }
-
-    Status = uefi_call_wrapper(gBS->AllocatePages, 4, AllocateAnyPages, EfiLoaderData, 4, (EFI_PHYSICAL_ADDRESS*)&bInfo.pageAllocatorTemporaryMemory);
-    if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
-
-    SetMem((void*)bInfo.pageAllocatorTemporaryMemory, EFI_PAGE_SIZE * 4, 0x00);
-    for (UINTN i = 0; i < 4; i++) {
-        Status = addPage(bInfo.pml4, bInfo.pageAllocatorTemporaryMemory + i * EFI_PAGE_SIZE, bInfo.pageAllocatorTemporaryMemory + i * EFI_PAGE_SIZE, ENTRY_PRESENT | ENTRY_RW);
-        if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
-    }
-
-    for (UINTN i = 0; i < initInfo.segmentCount; i++) {
-        MAPPING_INFO* mapping = &initInfo.segmentMapping[i];
-        UINT64 flags = ENTRY_PRESENT | ENTRY_USER;
-        if (mapping->flags & PF_W) flags |= ENTRY_RW;
-        if (!(mapping->flags & PF_X)) flags |= ENTRY_EXEC_DISABLE;
-
-        for (UINT64 offset = 0; offset < mapping->size; offset += EFI_PAGE_SIZE) {
-            Status = addPage(bInfo.pml4, mapping->vaddr + offset, mapping->paddr + offset, flags);
-            if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
-        }
-    }
-
-    Status = mapKernelSpace(bInfo.pml4, &bInfo.kInfo, &bInfo.fb, maxCPU, bInfo.font);
-    if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
-
-    Status = addPage(bInfo.pml4, (UINT64)&kernelJump_start, (UINT64)&kernelJump_start, ENTRY_PRESENT | ENTRY_RW);
-    if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
-
     bInfo.moduleCount = 0;
     {
         EFI_SIMPLE_FILE_SYSTEM_PROTOCOL* fs;
@@ -225,6 +184,46 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* Syste
         }
         uefi_call_wrapper(root->Close, 1, root);
     }
+
+    Status = setVideoMode(vInfo, &bInfo.fb);
+    if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
+    if (!((UINTN)bInfo.fb.pixelFormat == (UINTN)PixelBlueGreenRedReserved8BitPerColor || (UINTN)bInfo.fb.pixelFormat == (UINTN)PixelRedGreenBlueReserved8BitPerColor)) errorHandler(EFI_UNSUPPORTED, ImageHandle);
+
+    (*bInfo.pml4)[RECURSIVE_PML4_IDX] = ((UINTN)bInfo.pml4 & ENTRY_ADDR_MASK) | ENTRY_PRESENT | ENTRY_RW;
+
+    UINTN pagesRsdp = (align_up(bInfo.rsdp->Length, EFI_PAGE_SIZE)) / EFI_PAGE_SIZE;
+    for (UINTN i = 0; i < pagesRsdp; i++) {
+        UINT64 addr = ((UINT64)bInfo.rsdp & ENTRY_ADDR_MASK) + i * EFI_PAGE_SIZE;
+        Status = addPage(bInfo.pml4, addr, addr, ENTRY_PRESENT | ENTRY_RW);
+        if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
+    }
+
+    Status = uefi_call_wrapper(gBS->AllocatePages, 4, AllocateAnyPages, EfiLoaderData, 4, (EFI_PHYSICAL_ADDRESS*)&bInfo.pageAllocatorTemporaryMemory);
+    if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
+
+    SetMem((void*)bInfo.pageAllocatorTemporaryMemory, EFI_PAGE_SIZE * 4, 0x00);
+    for (UINTN i = 0; i < 4; i++) {
+        Status = addPage(bInfo.pml4, bInfo.pageAllocatorTemporaryMemory + i * EFI_PAGE_SIZE, bInfo.pageAllocatorTemporaryMemory + i * EFI_PAGE_SIZE, ENTRY_PRESENT | ENTRY_RW);
+        if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
+    }
+
+    for (UINTN i = 0; i < initInfo.segmentCount; i++) {
+        MAPPING_INFO* mapping = &initInfo.segmentMapping[i];
+        UINT64 flags = ENTRY_PRESENT | ENTRY_USER;
+        if (mapping->flags & PF_W) flags |= ENTRY_RW;
+        if (!(mapping->flags & PF_X)) flags |= ENTRY_EXEC_DISABLE;
+
+        for (UINT64 offset = 0; offset < mapping->size; offset += EFI_PAGE_SIZE) {
+            Status = addPage(bInfo.pml4, mapping->vaddr + offset, mapping->paddr + offset, flags);
+            if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
+        }
+    }
+
+    Status = mapKernelSpace(bInfo.pml4, &bInfo.kInfo, &bInfo.fb, maxCPU, bInfo.font);
+    if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
+
+    Status = addPage(bInfo.pml4, (UINT64)&kernelJump_start, (UINT64)&kernelJump_start, ENTRY_PRESENT | ENTRY_RW);
+    if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
 
     Status = allocateMemoryBitmap(bInfo.pml4, &bInfo.memoryBitmapAddress, &bInfo.memoryBitmapPages);
     if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);

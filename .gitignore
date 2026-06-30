@@ -48,3 +48,4 @@ debug/
 # Build Files
 build/
 out/
+.aider*

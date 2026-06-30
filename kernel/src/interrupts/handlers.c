@@ -1,5 +1,6 @@
 #include "handlers.h"
 #include "serial.h"
+#include "scheduler/scheduler.h"
 
 static InterruptHandler handlers[256];
 
@@ -32,5 +33,13 @@ void pageFaultHandler(INTERRUPT_FRAME* frame) {
     asm volatile("mov %%cr2, %0" : "=r"(cr2));
 
     serial_printf("ERROR: (kernel) #PF at %lX\n", cr2);
-    asm volatile("hlt");
+
+    if (frame->cs == 0x2B) {
+        Task* t = getCurrentTask();
+        serial_printf("TASK: killing task '%s' (pid=%lu) due to page fault\n", t->name, t->id);
+        killTaskAndSwitch(frame);
+    } else {
+        asm volatile("hlt");
+        while (1);
+    }
 }

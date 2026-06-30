@@ -12,6 +12,7 @@ SECTIONS
     . = 0x400000;
 
     .text : ALIGN(4K) {
+        *(.text.start)
         *(.text)
         *(.text.*)
         *(.rodata)
@@ -24,13 +25,11 @@ SECTIONS
         *(.data.*)
     } :data
 
-    __bss_start = .;
     .bss : ALIGN(4K) {
         *(.bss)
         *(.bss.*)
         *(COMMON)
     } :data
-    __bss_end = .;
 
     /DISCARD/ : {
         *(.comment)

@@ -54,6 +54,36 @@ void tempUnmap(void) {
     refreshTLB((void*)CANONICAL((uint64_t)TEMP_SLOT << 39));
 }
 
+uint64_t vmm_create_user_pml4(void) {
+    uint64_t new_pml4_phys = (uint64_t)pmmAllocator(1);
+    if (!new_pml4_phys) return 0;
+
+    void* new_pml4_vaddr = tempMap((void*)new_pml4_phys);
+    uint64_t* current_pml4 = PML4_VADDR;
+
+    memcpy(new_pml4_vaddr, current_pml4, PAGE_SIZE);
+
+    ((uint64_t*)new_pml4_vaddr)[RECURSIVE_SLOT] = (new_pml4_phys & ENTRY_ADDR_MASK) | PAGE_PRESENT | PAGE_WRITE;
+
+    tempUnmap();
+    return new_pml4_phys;
+}
+
+void vmm_map_in_cr3(uint64_t cr3, uint64_t vaddr, size_t size, uint64_t paddr, uint64_t flags) {
+    uint64_t old_cr3;
+    asm volatile("mov %%cr3, %0" : "=r"(old_cr3));
+
+    if (cr3 && cr3 != old_cr3) {
+        asm volatile("mov %0, %%cr3" : : "r"(cr3) : "memory");
+    }
+
+    addPageRange(vaddr, size, paddr, flags);
+
+    if (cr3 && cr3 != old_cr3) {
+        asm volatile("mov %0, %%cr3" : : "r"(old_cr3) : "memory");
+    }
+}
+
 void* addPage(uint64_t vaddr, uint64_t paddr, uint64_t flags) {
     if (vaddr % PAGE_SIZE != 0 || paddr % PAGE_SIZE != 0) return NULL;
 
@@ -189,6 +219,45 @@ void* allocatePages(size_t numOfPages, uint64_t flags) {
 void freePages(void* address, size_t numOfPages) {
     for (size_t i = 0; i < numOfPages; i++) {
         freePage((uint64_t)address + i * PAGE_SIZE);
+    }
+}
+
+void makePageRangeUser(uint64_t vaddr, size_t size) {
+    for (size_t off = 0; off < size; off += PAGE_SIZE) {
+        uint64_t addr = PAGE_ALIGN_DOWN(vaddr) + off;
+        uint16_t pml4_i = PML4_IDX(addr);
+        uint16_t pdpt_i = PDPT_IDX(addr);
+        uint16_t pd_i   = PD_IDX(addr);
+        uint16_t pt_i   = PT_IDX(addr);
+
+        uint64_t* pml4 = PML4_VADDR;
+        if (!(pml4[pml4_i] & PAGE_PRESENT)) continue;
+
+        uint64_t* pdpt = PDPT_VADDR(pml4_i);
+        if (!(pdpt[pdpt_i] & PAGE_PRESENT)) continue;
+
+        uint64_t* pd = PD_VADDR(pml4_i, pdpt_i);
+        if (!(pd[pd_i] & PAGE_PRESENT)) continue;
+
+        uint64_t* pt = PT_VADDR(pml4_i, pdpt_i, pd_i);
+        pt[pt_i] |= PAGE_USER;
+        refreshTLB((void*)addr);
+    }
+
+    // Also set USER in higher-level tables so future walks propagate correctly
+    for (size_t off = 0; off < size; off += PAGE_SIZE) {
+        uint64_t addr = PAGE_ALIGN_DOWN(vaddr) + off;
+        uint16_t pml4_i = PML4_IDX(addr);
+        uint16_t pdpt_i = PDPT_IDX(addr);
+        uint16_t pd_i   = PD_IDX(addr);
+
+        uint64_t* pml4 = PML4_VADDR;
+        uint64_t* pdpt = PDPT_VADDR(pml4_i);
+        uint64_t* pd = PD_VADDR(pml4_i, pdpt_i);
+
+        if (pd[pd_i] & PAGE_PRESENT) pd[pd_i] |= PAGE_USER;
+        if (pdpt[pdpt_i] & PAGE_PRESENT) pdpt[pdpt_i] |= PAGE_USER;
+        if (pml4[pml4_i] & PAGE_PRESENT) pml4[pml4_i] |= PAGE_USER;
     }
 }
 

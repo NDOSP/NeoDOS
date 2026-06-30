@@ -9,6 +9,11 @@ typedef struct SyscallFrame SyscallFrame;
 
 #define MAX_TASKS 64
 #define TIME_SLICE 5
+#define PRIORITY_LOW   0
+#define PRIORITY_NORM  64
+#define PRIORITY_HIGH  128
+#define PRIORITY_RTIME 192
+#define PRIORITY_MAX   255
 
 #define IPC_MSG_SIZE 64
 #define IPC_MAX_MSG 16
@@ -39,18 +44,28 @@ typedef struct Task {
     TaskState state;
     uint64_t ticksLeft;
     uint64_t cr3;
+    uint8_t priority;          // 0=lowest, 255=highest
+    int isModule;              // 1 if this task is a module (can use SYSCALL_MOD)
     Mailbox mailbox;
     INTERRUPT_FRAME frame;
 } Task;
 
 void schedulerInit(void);
 Task* createTask(void (*entry)(void), const char* name);
+Task* createTaskPrio(void (*entry)(void), const char* name, uint8_t priority);
 Task* createUserTask(void (*entry)(void), const char* name);
+Task* createUserTaskPrio(void (*entry)(void), const char* name, uint8_t priority);
 void addTaskToReadyQueue(Task* task);
 Task* findTask(uint64_t pid);
 uint64_t getCurrentPid(void);
 Task* getCurrentTask(void);
 uint64_t forkTask(const SyscallFrame* parent);
 void exitTask(void);
+int setTaskPriority(uint64_t pid, uint8_t priority);
+int getTaskPriority(uint64_t pid, uint8_t* priority);
+void launchModules(void);
+uint64_t schedulerBlockAndSwitch(SyscallFrame* sf);
+int schedulerWake(uint64_t pid);
+void killTaskAndSwitch(INTERRUPT_FRAME* frame);
 
 #endif

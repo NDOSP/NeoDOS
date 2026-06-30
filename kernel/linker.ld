@@ -30,4 +30,11 @@ SECTIONS {
     .bootinfo : ALIGN(4K) {
         KEEP(*(.bootinfo*))
     } :bootinfo
+
+    /DISCARD/ : {
+        *(.comment)
+        *(.note.*)
+        *(.eh_frame)
+        *(.eh_frame_hdr)
+    }
 }

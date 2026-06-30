@@ -13,6 +13,7 @@
 #include "debug.h"
 #include "scheduler/scheduler.h"
 #include "interrupts/lapic.h"
+#include "modman/modman.h"
 
 extern void loadGdt(uint64_t);
 
@@ -40,15 +41,17 @@ void kmain() {
     DEBUG_INFO("initializing scheduler");
     schedulerInit();
 
+    DEBUG_INFO("initializing module manager");
+    modman_init();
+
     if (bInfo.initEntry) {
         size_t stack_pages = 4;
         void* stack_phys = pmmAllocator(stack_pages);
         if (stack_phys) {
-            addPageRange((uint64_t)stack_phys, stack_pages * PAGE_SIZE,
-                         (uint64_t)stack_phys, PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
-
-            Task* task = createUserTask((void (*)(void))(uint64_t)bInfo.initEntry, "init");
+            Task* task = createUserTaskPrio((void (*)(void))(uint64_t)bInfo.initEntry, "init", PRIORITY_HIGH);
             if (task) {
+                vmm_map_in_cr3(task->cr3, (uint64_t)stack_phys, stack_pages * PAGE_SIZE,
+                               (uint64_t)stack_phys, PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
                 task->frame.rsp = (uint64_t)stack_phys + stack_pages * PAGE_SIZE;
                 addTaskToReadyQueue(task);
                 DEBUG_INFO("INIT: task created entry=%lX stack=%lX",
@@ -56,6 +59,9 @@ void kmain() {
             }
         }
     }
+
+    DEBUG_INFO("launching modules");
+    launchModules();
 
     DEBUG_INFO("scheduler ready, enabling interrupts");
 

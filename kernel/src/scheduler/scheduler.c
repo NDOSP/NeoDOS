@@ -7,6 +7,7 @@
 #include "debug.h"
 #include "string.h"
 #include "syscalls/syscalls.h"
+#include "bootinfo.h"
 
 // Default timer frequency for LAPIC timer
 #define DEFAULT_TIMER_HZ 337
@@ -20,6 +21,7 @@ static Task* currentTask = NULL;
 static Task* readyHead = NULL;
 static uint64_t taskCount = 0;
 static uint64_t totalTicks = 0;
+static uint64_t kernelCr3 = 0;
 
 static void idleTask(void) {
     while (1) {
@@ -29,16 +31,32 @@ static void idleTask(void) {
 
 static Task* pickNext(void) {
     if (!readyHead) return NULL;
+    Task* best = NULL;
+    uint8_t bestPrio = 0;
     Task* start = currentTask ? currentTask : readyHead;
-    Task* t = start->next;
-
-    while (t != start) {
-        if (t->state == TASK_READY) return t;
+    Task* t = start;
+    do {
+        if (t->state == TASK_READY && t->priority >= bestPrio) {
+            if (t->priority > bestPrio || !best) {
+                best = t;
+                bestPrio = t->priority;
+            }
+        }
         t = t->next;
+    } while (t != start);
+
+    if (!best) return NULL;
+
+    // Within same priority, round-robin: pick the next READY task at or after current
+    if (bestPrio == (currentTask ? currentTask->priority : 0)) {
+        Task* rr = start->next;
+        while (rr != start) {
+            if (rr->state == TASK_READY && rr->priority == bestPrio) return rr;
+            rr = rr->next;
+        }
     }
 
-    if (start->state == TASK_READY) return start;
-    return NULL;
+    return best;
 }
 
 void timerHandler(INTERRUPT_FRAME* frame) {
@@ -65,9 +83,14 @@ void timerHandler(INTERRUPT_FRAME* frame) {
     *frame = next->frame;
 
     currentTask = next;
+
+    uint64_t target_cr3 = next->cr3 ? next->cr3 : kernelCr3;
+    asm volatile("mov %0, %%cr3" : : "r"(target_cr3) : "memory");
 }
 
 void schedulerInit(void) {
+    asm volatile("mov %%cr3, %0" : "=r"(kernelCr3));
+
     idtSetEntry(32, idt32Stub, 0x8E, 0);
     registerInterruptHandler(32, timerHandler);
 
@@ -99,6 +122,10 @@ void addTaskToReadyQueue(Task* task) {
 }
 
 Task* createTask(void (*entry)(void), const char* name) {
+    return createTaskPrio(entry, name, PRIORITY_NORM);
+}
+
+Task* createTaskPrio(void (*entry)(void), const char* name, uint8_t priority) {
     if (taskCount >= MAX_TASKS) return NULL;
 
     uint64_t id = taskCount++;
@@ -107,6 +134,8 @@ Task* createTask(void (*entry)(void), const char* name) {
     task->state = TASK_READY;
     task->ticksLeft = TIME_SLICE;
     task->cr3 = 0;
+    task->priority = priority;
+    task->isModule = 0;
 
     uint32_t i;
     for (i = 0; i < sizeof(task->name) - 1 && name[i]; i++)
@@ -131,6 +160,10 @@ Task* createTask(void (*entry)(void), const char* name) {
 }
 
 Task* createUserTask(void (*entry)(void), const char* name) {
+    return createUserTaskPrio(entry, name, PRIORITY_NORM);
+}
+
+Task* createUserTaskPrio(void (*entry)(void), const char* name, uint8_t priority) {
     if (taskCount >= MAX_TASKS) return NULL;
 
     uint64_t id = taskCount++;
@@ -138,7 +171,9 @@ Task* createUserTask(void (*entry)(void), const char* name) {
     task->id = id;
     task->state = TASK_READY;
     task->ticksLeft = TIME_SLICE;
-    task->cr3 = 0;
+    task->cr3 = vmm_create_user_pml4();
+    task->priority = priority;
+    task->isModule = 0;
 
     uint32_t i;
     for (i = 0; i < sizeof(task->name) - 1 && name[i]; i++)
@@ -158,7 +193,7 @@ Task* createUserTask(void (*entry)(void), const char* name) {
     task->next = NULL;
     task->prev = NULL;
 
-    DEBUG_INFO("SCHED: user task '%s' created (id=%lu)", name, id);
+    DEBUG_INFO("SCHED: user task '%s' (prio=%u) created (id=%lu)", name, priority, id);
     return task;
 }
 
@@ -172,7 +207,9 @@ uint64_t forkTask(const SyscallFrame* sf) {
     child->id = id;
     child->state = TASK_READY;
     child->ticksLeft = TIME_SLICE;
-    child->cr3 = 0;
+    child->cr3 = vmm_create_user_pml4();
+    child->priority = currentTask->priority;
+    child->isModule = currentTask->isModule;
 
     for (uint32_t i = 0; i < sizeof(child->name) - 1 && currentTask->name[i]; i++)
         child->name[i] = currentTask->name[i];
@@ -185,7 +222,7 @@ uint64_t forkTask(const SyscallFrame* sf) {
     if (!stack) return -1;
     uint64_t stackFlags = PAGE_PRESENT | PAGE_WRITE;
     if (isUser) stackFlags |= PAGE_USER;
-    addPageRange((uint64_t)stack, 4 * PAGE_SIZE, (uint64_t)stack, stackFlags);
+    vmm_map_in_cr3(child->cr3, (uint64_t)stack, 4 * PAGE_SIZE, (uint64_t)stack, stackFlags);
 
     INTERRUPT_FRAME* f = &child->frame;
     memset(f, 0, sizeof(INTERRUPT_FRAME));
@@ -235,6 +272,32 @@ void exitTask(void) {
     }
 }
 
+void killTaskAndSwitch(INTERRUPT_FRAME* frame) {
+    Task* dead = currentTask;
+    DEBUG_INFO("SCHED: killing task '%s' (pid=%lu)", dead->name, dead->id);
+
+    dead->state = TASK_DEAD;
+    dead->prev->next = dead->next;
+    dead->next->prev = dead->prev;
+
+    if (readyHead == dead)
+        readyHead = (dead->next != dead) ? dead->next : NULL;
+
+    Task* next = pickNext();
+    if (!next) {
+        serial_printf("SCHED: FATAL - no tasks left after killing '%s' (pid=%lu), halting\n", dead->name, dead->id);
+        asm volatile("hlt");
+        while (1);
+    }
+
+    currentTask = next;
+    next->state = TASK_RUNNING;
+    *frame = next->frame;
+
+    uint64_t target_cr3 = next->cr3 ? next->cr3 : kernelCr3;
+    asm volatile("mov %0, %%cr3" : : "r"(target_cr3) : "memory");
+}
+
 Task* findTask(uint64_t pid) {
     if (pid == 0) return currentTask;
     if (pid >= MAX_TASKS) return NULL;
@@ -249,4 +312,131 @@ uint64_t getCurrentPid(void) {
 
 Task* getCurrentTask(void) {
     return currentTask;
+}
+
+int setTaskPriority(uint64_t pid, uint8_t priority) {
+    Task* t = findTask(pid);
+    if (!t) return -1;
+    t->priority = priority;
+    return 0;
+}
+
+int getTaskPriority(uint64_t pid, uint8_t* priority) {
+    Task* t = findTask(pid);
+    if (!t || !priority) return -1;
+    *priority = t->priority;
+    return 0;
+}
+
+static void syscallFrameToInterrupt(const SyscallFrame* sf, INTERRUPT_FRAME* iframe) {
+    iframe->r15 = sf->r15;
+    iframe->r14 = sf->r14;
+    iframe->r13 = sf->r13;
+    iframe->r12 = sf->r12;
+    iframe->r11 = sf->r11b;
+    iframe->r10 = sf->r10;
+    iframe->r9  = sf->r9;
+    iframe->r8  = sf->r8;
+    iframe->rcx = sf->rcx2;
+    iframe->rdx = sf->rdx;
+    iframe->rsi = sf->rsi;
+    iframe->rdi = sf->rdi;
+    iframe->rbx = sf->rbx;
+    iframe->rbp = sf->rbp;
+    iframe->rip = sf->rip;
+    iframe->rflags = sf->rflags;
+    iframe->rsp = sf->userRsp;
+    iframe->cs = 0x2B;
+    iframe->ss = 0x23;
+}
+
+static void interruptFrameToSyscallStack(const INTERRUPT_FRAME* iframe, SyscallFrame* sf) {
+    sf->r15 = iframe->r15;
+    sf->r14 = iframe->r14;
+    sf->r13 = iframe->r13;
+    sf->r12 = iframe->r12;
+    sf->r11b = iframe->r11;
+    sf->r10 = iframe->r10;
+    sf->r9  = iframe->r9;
+    sf->r8  = iframe->r8;
+    sf->rcx2 = iframe->rcx;
+    sf->rdx = iframe->rdx;
+    sf->rsi = iframe->rsi;
+    sf->rdi = iframe->rdi;
+    sf->rbx = iframe->rbx;
+    sf->rbp = iframe->rbp;
+    sf->rip = iframe->rip;
+    sf->rflags = iframe->rflags;
+    sf->userRsp = iframe->rsp;
+}
+
+uint64_t schedulerBlockAndSwitch(SyscallFrame* sf) {
+    Task* self = currentTask;
+    syscallFrameToInterrupt(sf, &self->frame);
+    self->state = TASK_BLOCKED;
+
+    Task* next = pickNext();
+    if (!next || next == self) {
+        self->state = TASK_READY;
+        return -1;
+    }
+
+    // Cannot switch to kernel tasks via sysretq (always forces user mode)
+    if (!next->cr3) {
+        self->state = TASK_READY;
+        return -1;
+    }
+
+    uint64_t next_rax = next->frame.rax;
+    currentTask = next;
+    next->state = TASK_RUNNING;
+    interruptFrameToSyscallStack(&next->frame, sf);
+
+    asm volatile("mov %0, %%cr3" : : "r"(next->cr3) : "memory");
+
+    return next_rax;
+}
+
+int schedulerWake(uint64_t pid) {
+    Task* t = findTask(pid);
+    if (!t) return -1;
+    if (t->state == TASK_BLOCKED) {
+        t->state = TASK_READY;
+        return 0;
+    }
+    return -1;
+}
+
+void launchModules(void) {
+    for (uint64_t i = 0; i < bInfo.moduleCount; i++) {
+        void* entry = bInfo.modules[i].data;
+        uint64_t modSize = bInfo.modules[i].size;
+        if (!entry) continue;
+
+        // Allocate user stack
+        size_t stack_pages = 4;
+        void* stack_phys = pmmAllocator(stack_pages);
+        if (!stack_phys) {
+            DEBUG_WARN("SCHED: failed to allocate stack for module '%s'", bInfo.modules[i].name);
+            continue;
+        }
+
+        Task* task = createUserTaskPrio((void (*)(void))(uint64_t)entry,
+                                        bInfo.modules[i].name, PRIORITY_NORM);
+        if (task) {
+            task->isModule = 1;
+
+            // Map module code/data pages into the task's page table
+            uint64_t modPages = (modSize + PAGE_SIZE - 1) / PAGE_SIZE;
+            vmm_map_in_cr3(task->cr3, (uint64_t)entry, modPages * PAGE_SIZE,
+                           (uint64_t)entry, PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
+
+            vmm_map_in_cr3(task->cr3, (uint64_t)stack_phys, stack_pages * PAGE_SIZE,
+                           (uint64_t)stack_phys, PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
+            task->frame.rsp = (uint64_t)stack_phys + stack_pages * PAGE_SIZE;
+            addTaskToReadyQueue(task);
+            DEBUG_INFO("SCHED: module '%s' launched (entry=%lX, size=%lu, pages=%lu)",
+                       bInfo.modules[i].name, (uint64_t)entry, modSize, modPages);
+        }
+    }
 }

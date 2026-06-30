@@ -16,6 +16,7 @@ int ipcSend(uint64_t destPid, const uint64_t* data) {
     mb->msgs[mb->head].senderPid = 0;
     mb->head = next;
 
+    schedulerWake(destPid);
     return 0;
 }
 
@@ -47,5 +48,6 @@ int ipcSendPid(uint64_t destPid, uint64_t senderPid, const uint64_t* data) {
     mb->msgs[mb->head].senderPid = senderPid;
     mb->head = next;
 
+    schedulerWake(destPid);
     return 0;
 }

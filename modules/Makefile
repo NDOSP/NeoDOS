@@ -1,42 +1,37 @@
 MODULES_DIR := ../build/MODULES
 CC := gcc
-CFLAGS := -ffreestanding -O2 -Wall -Wextra -nostdlib -nostartfiles \
-          -fno-pie -fno-stack-protector -mno-red-zone \
-           -Iinclude -MMD -MP
+CFLAGS := -ffreestanding -O2 -fPIC -Wall -Wextra -nostdlib -nostartfiles \
+          -fno-stack-protector -mno-red-zone \
+          -Iinclude -MMD -MP
 AS := nasm
 ASFLAGS := -f elf64
 LD := ld
 LDFLAGS := -nostdlib -static
+OBJCOPY := objcopy
 
-C_SRCS := $(wildcard src/*.c)
-ASM_SRCS := $(wildcard src/*.asm)
+MODULE_NAMES := $(patsubst %/src,%,$(wildcard */src))
+MODS := $(addprefix $(MODULES_DIR)/, $(addsuffix .mod, $(MODULE_NAMES)))
 
-C_OBJS := $(patsubst src/%.c,$(MODULES_DIR)/%.o,$(C_SRCS))
-ASM_OBJS := $(patsubst src/%.asm,$(MODULES_DIR)/%.o,$(ASM_SRCS))
-ALL_OBJS := $(C_OBJS) $(ASM_OBJS)
-DEPS := $(C_OBJS:.o=.d)
-MODS := $(patsubst src/%.c,$(MODULES_DIR)/%.mod,$(C_SRCS)) \
-        $(patsubst src/%.asm,$(MODULES_DIR)/%.mod,$(ASM_SRCS))
+.PHONY: all clean
 
-.PHONY: all clean init
+all: $(MODS)
 
-all: init $(MODS)
+define MODULE_RULE
+# Compile
+$(MODULES_DIR)/$(1).o: $(1)/src/$(1).c
+	@mkdir -p $$(MODULES_DIR)
+	$$(CC) $$(CFLAGS) -I$(1)/include -c $$< -o $$@
 
-init: $(MODULES_DIR)/init.o
-	$(LD) $(LDFLAGS) -T init.ld $(MODULES_DIR)/init.o -o ../build/INIT.ELF
+# Link
+$(MODULES_DIR)/$(1).mod: $(MODULES_DIR)/$(1).o
+	$$(LD) $$(LDFLAGS) -T mod.ld $$< -o $(MODULES_DIR)/$(1).elf
+	$$(OBJCOPY) -O binary --set-section-flags .bss=alloc,load,contents $(MODULES_DIR)/$(1).elf $$@
+	rm -f $(MODULES_DIR)/$(1).elf
+endef
 
-$(MODULES_DIR)/%.o: src/%.c
-	@mkdir -p $(MODULES_DIR)
-	$(CC) $(CFLAGS) -c $< -o $@
+$(foreach mod,$(MODULE_NAMES),$(eval $(call MODULE_RULE,$(mod))))
 
-$(MODULES_DIR)/%.o: src/%.asm
-	@mkdir -p $(MODULES_DIR)
-	$(AS) $(ASFLAGS) $< -o $@
-
-$(MODULES_DIR)/%.mod: $(MODULES_DIR)/%.o
-	$(LD) -r $< -o $@
-
--include $(DEPS)
+$(MODULES_DIR)/%.d: ;
 
 clean:
-	rm -f $(MODULES_DIR)/*.o $(MODULES_DIR)/*.d $(MODULES_DIR)/*.mod ../build/INIT.ELF
+	rm -f $(MODULES_DIR)/*.o $(MODULES_DIR)/*.d $(MODULES_DIR)/*.mod

@@ -4,6 +4,9 @@
 #include "memory/pmm.h"
 #include "memory/vmm.h"
 #include "memory/paging.h"
+#include "memory/memutils.h"
+#include "modman/modman.h"
+#include "bootinfo.h"
 #include "serial.h"
 
 extern void syscall_entry(void); 
@@ -58,7 +61,7 @@ uint64_t syscallDispatcher(uint64_t num, uint64_t arg1, uint64_t arg2, uint64_t 
             memcpy((void*)arg1, (void*)buf, IPC_MSG_SIZE);
             return senderPid;
         }
-        return -1;
+        return schedulerBlockAndSwitch(sf);
     }
 
     case SYSCALL_GETPID:
@@ -69,9 +72,16 @@ uint64_t syscallDispatcher(uint64_t num, uint64_t arg1, uint64_t arg2, uint64_t 
         if (n == 0 || n > 256) return -1;
         void* phys = pmmAllocator(n);
         if (!phys) return -1;
-        addPageRange((uint64_t)phys, n * 4096, (uint64_t)phys,
+        uint64_t size = n * 4096;
+        uint64_t paddr = (uint64_t)phys;
+        addPageRange(paddr, size, paddr,
                      PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
-        memset(phys, 0, n * 4096);
+        Task* tsk = getCurrentTask();
+        if (tsk && tsk->cr3) {
+            vmm_map_in_cr3(tsk->cr3, paddr, size, paddr,
+                           PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
+        }
+        memset(phys, 0, size);
         return (uint64_t)phys;
     }
 
@@ -91,6 +101,174 @@ uint64_t syscallDispatcher(uint64_t num, uint64_t arg1, uint64_t arg2, uint64_t 
         buf[len] = '\0';
         serial_puts(buf);
         return len;
+    }
+
+    case SYSCALL_MOD_REGISTER: {
+        const char* name = (const char*)arg1;
+        uint64_t pid = getCurrentPid();
+        return modman_register(pid, name);
+    }
+
+    case SYSCALL_MOD_UNREGISTER: {
+        uint64_t pid = getCurrentPid();
+        return modman_unregister(pid);
+    }
+
+    case SYSCALL_MOD_LIST: {
+        ModEntry* entries = (ModEntry*)arg1;
+        int max = (int)arg2;
+        return modman_list(entries, max);
+    }
+
+    case SYSCALL_MOD: {
+        Task* task = getCurrentTask();
+        if (!task || !task->isModule) return -1ULL;
+
+        uint64_t sub = arg1;
+
+        switch (sub) {
+        case 1: { // PHYS_MAP
+            uint64_t paddr = arg2 & ~0xFFFULL;
+            uint64_t pages = arg3;
+            if (pages == 0 || pages > 65536) return -1ULL;
+            uint64_t size = pages * PAGE_SIZE;
+            void* ret = addPageRange(paddr, size, paddr,
+                                     PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
+            if (ret && task->cr3) {
+                vmm_map_in_cr3(task->cr3, paddr, size, paddr,
+                               PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
+            }
+            return ret ? paddr : -1ULL;
+        }
+
+        case 2: { // BOOTINFO
+            uint64_t type = arg2 & 0xFFULL;
+            uint64_t extra = (arg2 >> 8) & 0xFFFFFFULL;
+            uint64_t max_size = arg2 >> 32;
+            void* out = (void*)arg3;
+
+            switch (type) {
+            case 1: { // Framebuffer info
+                struct {
+                    uint64_t addr;
+                    uint64_t size;
+                    uint32_t width;
+                    uint32_t height;
+                    uint32_t scanline;
+                    uint32_t format;
+                } fb = {
+                    (uint64_t)bInfo.fb.fbPtr,
+                    bInfo.fb.fbSize,
+                    bInfo.fb.fbWidth,
+                    bInfo.fb.fbHeight,
+                    bInfo.fb.fbScanlineBytes,
+                    (uint32_t)bInfo.fb.pixelFormat
+                };
+                uint64_t copy = sizeof(fb) < max_size ? sizeof(fb) : max_size;
+                memcpy(out, &fb, copy);
+                return copy;
+            }
+            case 2: { // Font info
+                struct {
+                    uint64_t addr;
+                    uint32_t width;
+                    uint32_t height;
+                    uint32_t glyph_count;
+                    uint32_t bytes_per_glyph;
+                } font;
+                if (!bInfo.font) return -1ULL;
+                font.addr = (uint64_t)bInfo.font;
+                font.width = bInfo.font->fontWidth;
+                font.height = bInfo.font->fontHeight;
+                font.glyph_count = bInfo.font->glyphCount;
+                font.bytes_per_glyph = bInfo.font->bytesPerGlyph;
+                uint64_t copy = sizeof(font) < max_size ? sizeof(font) : max_size;
+                memcpy(out, &font, copy);
+                return copy;
+            }
+            case 3: { // Module count
+                uint64_t count = bInfo.moduleCount;
+                if (max_size >= sizeof(count)) {
+                    memcpy(out, &count, sizeof(count));
+                    return sizeof(count);
+                }
+                return -1ULL;
+            }
+            case 4: { // Module info by index (extra = index)
+                uint64_t idx = extra;
+                if (idx >= bInfo.moduleCount) return -1ULL;
+                struct {
+                    uint64_t addr;
+                    uint64_t size;
+                    char name[32];
+                } mod;
+                mod.addr = (uint64_t)bInfo.modules[idx].data;
+                mod.size = bInfo.modules[idx].size;
+                for (int i = 0; i < 32; i++)
+                    mod.name[i] = bInfo.modules[idx].name[i];
+                uint64_t copy = sizeof(mod) < max_size ? sizeof(mod) : max_size;
+                memcpy(out, &mod, copy);
+                return copy;
+            }
+            default:
+                return -1ULL;
+            }
+        }
+
+        case 3: { // BOOTINFO_SIZE
+            uint64_t type = arg2;
+            switch (type) {
+            case 1: return 40;
+            case 2: return 28;
+            case 3: return 8;
+            case 4: return 48;
+            default: return -1ULL;
+            }
+        }
+
+        case 4: { // PORT_IO
+            uint16_t port = arg2 & 0xFFFF;
+            uint8_t width = (arg2 >> 16) & 0xFF;
+            uint8_t dir = (arg2 >> 24) & 0xFF;
+            uint32_t value = arg3 & 0xFFFFFFFF;
+
+            if (dir == 0) { // in
+                switch (width) {
+                case 8: {
+                    uint8_t v;
+                    asm volatile("inb %1, %0" : "=a"(v) : "Nd"(port));
+                    return v;
+                }
+                case 16: {
+                    uint16_t v;
+                    asm volatile("inw %1, %0" : "=a"(v) : "Nd"(port));
+                    return v;
+                }
+                case 32: {
+                    uint32_t v;
+                    asm volatile("inl %1, %0" : "=a"(v) : "Nd"(port));
+                    return v;
+                }
+                }
+            } else { // out
+                switch (width) {
+                case 8:
+                    asm volatile("outb %0, %1" : : "a"((uint8_t)value), "Nd"(port));
+                    return 0;
+                case 16:
+                    asm volatile("outw %0, %1" : : "a"((uint16_t)value), "Nd"(port));
+                    return 0;
+                case 32:
+                    asm volatile("outl %0, %1" : : "a"(value), "Nd"(port));
+                    return 0;
+                }
+            }
+            return -1ULL;
+        }
+
+        default:
+            return -1ULL;
+        }
     }
 
     default:

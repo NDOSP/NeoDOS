@@ -1,6 +1,8 @@
 #include "idt.h"
 #include "handlers.h"
 #include "string.h"
+#include "serial.h"
+#include "scheduler/scheduler.h"
 
 extern void idtDefaultStub(void);
 extern void idt0Stub(void);
@@ -92,6 +94,14 @@ void idtHandler(INTERRUPT_FRAME* frame) {
         handler(frame);
     } else {
         defaultHandler(frame);
-        asm volatile("hlt");
+        if (frame->cs == 0x2B) {
+            Task* t = getCurrentTask();
+            serial_printf("TASK: killing task '%s' (pid=%lu) for unhandled INT %lu\n",
+                t->name, t->id, intNum);
+            killTaskAndSwitch(frame);
+        } else {
+            asm volatile("hlt");
+            while (1);
+        }
     }
 }
