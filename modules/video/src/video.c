@@ -53,6 +53,10 @@ static void draw_char(char c, int x, int y, uint32_t color) {
                 for (int dy = 0; dy < s; dy++)
                     for (int dx = 0; dx < s; dx++)
                         putpixel(x + col * s + dx, y + row * s + dy, color);
+            } else {
+                for (int dy = 0; dy < s; dy++)
+                    for (int dx = 0; dx < s; dx++)
+                        putpixel(x + col * s + dx, y + row * s + dy, 0x00000000);
             }
         }
     }

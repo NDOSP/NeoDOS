@@ -1,7 +1,7 @@
-#include "modlib.h"
+#include "modstd.h"
 #include <stdint.h>
 
-MODINFO("vfs");
+REGISTER_MODULE("vfs");
 
 #define VFS_MOUNT   1
 #define VFS_UNMOUNT 2
@@ -201,15 +201,16 @@ static void handle_ipc(unsigned char* msg, unsigned long long sender) {
     mod_send(sender, reply);
 }
 
-__attribute__((section(".text.start")))
-void _start(void) {
-    debug_puts("VFS: init\n");
-    while (1) {
-        unsigned char msg[64];
-        unsigned long long snd = mod_recv(msg);
-        if (snd != (unsigned long long)-1)
-            handle_ipc(msg, snd);
-        else
-            asm volatile("pause");
-    }
+void init(void) {
+    return;
+}
+
+void loop(void) {
+    unsigned char msg[64];
+    unsigned long long snd = mod_recv(msg);
+
+    if (snd != (unsigned long long)-1)
+        handle_ipc(msg, snd);
+    else
+        asm volatile("pause");
 }

@@ -2,7 +2,8 @@ MODULES_DIR := ../build/MODULES
 CC := gcc
 CFLAGS := -ffreestanding -O2 -fPIC -Wall -Wextra -nostdlib -nostartfiles \
           -fno-stack-protector -mno-red-zone \
-          -Iinclude -MMD -MP
+          -Iinclude -MMD -MP \
+		  -I../libs
 AS := nasm
 ASFLAGS := -f elf64
 LD := ld

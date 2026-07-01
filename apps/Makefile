@@ -2,7 +2,8 @@ APPS_DIR := ../build/APPS
 CC := gcc
 CFLAGS := -ffreestanding -O2 -fPIC -Wall -Wextra -nostdlib -nostartfiles \
           -fno-stack-protector -mno-red-zone \
-          -I../modules/include -MMD -MP
+          -I../modules/include -MMD -MP \
+		  -I../libs  # TODO: Remove modules include
 LD := ld
 LDFLAGS := -nostdlib -static -z separate-code -Ttext=0
 

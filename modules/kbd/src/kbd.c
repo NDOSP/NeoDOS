@@ -1,4 +1,4 @@
-#include "modlib.h"
+#include "modstd.h"
 #include <stdint.h>
 
 MODINFO("kbd");

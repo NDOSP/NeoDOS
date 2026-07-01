@@ -82,14 +82,33 @@ static int kbd_getchar(uint64_t pid) {
     return -1;
 }
 
+#define EXECV 2
+
+static void elf_start_proc(const char str[128], uint64_t pid) {
+    uint64_t msg[8];
+    msg[0] = EXECV;
+
+    int mi = 0;
+    int pos = 0;
+    const char* prefix = "C:\\NEODOS\\BIN\\";
+    while (prefix[mi] && pos < 55) { ((char*)msg)[8 + pos] = prefix[mi]; mi++; pos++; }
+
+    mi = 0;
+    while (str[mi] && pos < 55) { ((char*)msg)[8 + pos] = str[mi]; mi++; pos++; }
+    ((char*)msg)[8 + pos] = '\0';
+
+    mod_send(pid, msg);
+}
+
 __attribute__((section(".text.start")))
 void _start(void) {
     debug_puts("SHELL: starting\n");
 
     uint64_t vid = find_mod("video");
     uint64_t kbd = find_mod("kbd");
+    uint64_t elf = find_mod("elf");
 
-    if (vid == (uint64_t)-1 || kbd == (uint64_t)-1) {
+    if (vid == (uint64_t)-1 || kbd == (uint64_t)-1 || elf == (uint64_t)-1) {
         debug_puts("SHELL: missing video/kbd modules\n");
         while (1) asm volatile("pause");
     }
@@ -102,7 +121,7 @@ void _start(void) {
 
     vid_setscale(vid, TEXT_SCALE);
     vid_clear(vid);
-    vid_putstr(vid, "NeoDOS v0.1", COL_WHITE, 0, 0);
+    vid_putstr(vid, "NeoDOS", COL_WHITE, 0, 0);
     vid_putstr(vid, "Type 'help' for commands", COL_WHITE, 0, FONT_H * TEXT_SCALE * 2);
 
     int row = 4;
@@ -111,6 +130,7 @@ void _start(void) {
         vid_putstr(vid, PROMPT, COL_WHITE, 0, row * FONT_H * TEXT_SCALE);
 
         int col = 0;
+        char input[128] = {0};
 
         while (1) {
             int c = kbd_getchar(kbd);
@@ -121,6 +141,8 @@ void _start(void) {
 
             if (c == '\n' || c == '\r') {
                 row++;
+                elf_start_proc(input, elf);
+
                 break;
             } else if (c == 8) {
                 if (col > 0) {
@@ -131,6 +153,8 @@ void _start(void) {
             } else if (c >= 32 && col < LINE_MAX - 1) {
                 int px = (PROMPT_LEN + col) * FONT_W * TEXT_SCALE;
                 vid_putchar(vid, c, COL_WHITE, px, row * FONT_H * TEXT_SCALE);
+
+                input[col] = c;
                 col++;
             }
         }

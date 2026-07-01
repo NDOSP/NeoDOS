@@ -1,3 +1,5 @@
+// Legacy compatibility header — all module APIs are now in modstd.h
+
 #ifndef MODLIB_H
 #define MODLIB_H
 
@@ -6,24 +8,7 @@
 #include "module.h"
 
 // ======================== Syscall numbers ========================
-#define SYSCALL_EXIT        1
-#define SYSCALL_FORK        2
-#define SYSCALL_GETPID      3
-#define SYSCALL_SEND        4
-#define SYSCALL_RECV        5
-#define SYSCALL_ALLOC_PAGES 6
-#define SYSCALL_FREE_PAGES  7
-#define SYSCALL_MOD_LIST       12
-#define SYSCALL_SHM            8
-#define SYSCALL_RECV_FROM      9
-#define SHM_CREATE  1
-#define SHM_ATTACH  2
-#define SHM_DETACH  3
-#define SYSCALL_MOD            20
-#define SYSCALL_NDR            21
-#define NDR_SIZE    1
-#define NDR_COPY    2
-#define SYSCALL_WRITE       0xFF00000000000001
+#include "../../libs/syscalls.h"
 
 // ======================== SYSCALL_MOD subfunctions ========================
 #define MOD_PHYS_MAP   1
