@@ -237,6 +237,14 @@ uint64_t syscallDispatcher(uint64_t num, uint64_t arg1, uint64_t arg2, uint64_t 
                 }
                 return -1ULL;
             }
+            case 5: { // Font scale
+                uint64_t scale = bInfo.fontScale;
+                if (max_size >= sizeof(scale)) {
+                    memcpy(out, &scale, sizeof(scale));
+                    return sizeof(scale);
+                }
+                return -1ULL;
+            }
             case 4: { // Module info by index (extra = index)
                 uint64_t idx = extra;
                 if (idx >= bInfo.moduleCount) return -1ULL;
@@ -265,6 +273,7 @@ uint64_t syscallDispatcher(uint64_t num, uint64_t arg1, uint64_t arg2, uint64_t 
             case 2: return 28;
             case 3: return 8;
             case 4: return 48;
+            case 5: return 8;
             default: return -1ULL;
             }
         }
@@ -275,33 +284,39 @@ uint64_t syscallDispatcher(uint64_t num, uint64_t arg1, uint64_t arg2, uint64_t 
             uint8_t dir = (arg2 >> 24) & 0xFF;
             uint32_t value = arg3 & 0xFFFFFFFF;
 
-            if (dir == 0) { // in
-                switch (width) {
-                case 8: {
+            // Accept both byte-width (1,2,4) and bit-width (8,16,32)
+            unsigned w = width;
+            if (w == 8) w = 1;
+            else if (w == 16) w = 2;
+            else if (w == 32) w = 4;
+
+            if (dir == 0) {
+                switch (w) {
+                case 1: {
                     uint8_t v;
                     asm volatile("inb %1, %0" : "=a"(v) : "Nd"(port));
                     return v;
                 }
-                case 16: {
+                case 2: {
                     uint16_t v;
                     asm volatile("inw %1, %0" : "=a"(v) : "Nd"(port));
                     return v;
                 }
-                case 32: {
+                case 4: {
                     uint32_t v;
                     asm volatile("inl %1, %0" : "=a"(v) : "Nd"(port));
                     return v;
                 }
                 }
-            } else { // out
-                switch (width) {
-                case 8:
+            } else {
+                switch (w) {
+                case 1:
                     asm volatile("outb %0, %1" : : "a"((uint8_t)value), "Nd"(port));
                     return 0;
-                case 16:
+                case 2:
                     asm volatile("outw %0, %1" : : "a"((uint16_t)value), "Nd"(port));
                     return 0;
-                case 32:
+                case 4:
                     asm volatile("outl %0, %1" : : "a"(value), "Nd"(port));
                     return 0;
                 }
@@ -357,6 +372,25 @@ uint64_t syscallDispatcher(uint64_t num, uint64_t arg1, uint64_t arg2, uint64_t 
 
         default:
             return -1ULL;
+        }
+    }
+
+    case SYSCALL_NDR: {
+        uint64_t sub = arg1;
+        switch (sub) {
+        case NDR_SIZE:
+            if (!bInfo.registry.data) return -1;
+            return bInfo.registry.size;
+        case NDR_COPY:
+            if (!bInfo.registry.data) return -1;
+            if (arg3 >= bInfo.registry.size) return -1;
+            { uint64_t copy = arg4;
+            if (arg3 + copy > bInfo.registry.size)
+                copy = bInfo.registry.size - arg3;
+            memcpy((void*)arg2, (uint8_t*)bInfo.registry.data + arg3, copy);
+            return copy; }
+        default:
+            return -1;
         }
     }
 

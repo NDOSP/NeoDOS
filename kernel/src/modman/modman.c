@@ -131,7 +131,7 @@ int modman_register_embedded(uint64_t pid, void* data, uint64_t size, uint64_t* 
 
     mi->name[63] = '\0';
     if (out_entry_off)
-        *out_entry_off = (mi->init_off != 0) ? mi->init_off : sizeof(ModInfoHeader);
+        *out_entry_off = mi->init_off;
 
     if (pid != 0) {
         modman_register(pid, mi->name);

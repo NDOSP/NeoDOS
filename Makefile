@@ -1,10 +1,12 @@
-.PHONY: all boot bios_error image tools clean run kernel modules init
+.PHONY: all boot bios_error image tools clean run kernel modules init apps
 
 BUILD_DIR := build
 MOD_DIR   := $(BUILD_DIR)/MODULES
+APPS_DIR  := $(BUILD_DIR)/APPS
 DISK_IMG  := $(BUILD_DIR)/disk.img
 BIOS_ERROR := $(BUILD_DIR)/bioserr.bin
 MOD_BINS   = $(wildcard $(MOD_DIR)/*.mod)
+APP_BINS   = $(wildcard $(APPS_DIR)/*)
 
 all: boot bios_error image
 
@@ -29,7 +31,10 @@ modules: | build
 build:
 	@mkdir -p build
 
-image: kernel boot tools modules init bios_error
+apps: | build
+	$(MAKE) -C apps all
+
+image: kernel boot tools modules init apps bios_error
 	@mkdir -p $(BUILD_DIR)
 	
 	dd if=/dev/zero of=$(DISK_IMG) bs=1M count=64 status=progress
@@ -57,6 +62,11 @@ image: kernel boot tools modules init bios_error
 		name=$$(basename $$m); \
 		MOD_PAIRS="$$MOD_PAIRS $$m=NEODOS/MODULES/$$name"; \
 	done; \
+	BIN_PAIRS=""; \
+	for b in $(APP_BINS); do \
+		name=$$(basename $$b); \
+		BIN_PAIRS="$$BIN_PAIRS $$b=NEODOS/BIN/$$name"; \
+	done; \
 	INIT_PAIR=""; \
 	if [ -f build/INIT.ELF ]; then INIT_PAIR="build/INIT.ELF=NEODOS/INIT.ELF"; fi; \
 	python3 populate_fat.py $$FAT_IMG \
@@ -64,7 +74,7 @@ image: kernel boot tools modules init bios_error
 		build/OSDATA.NDR=NEODOS/OSDATA.NDR \
 		build/NEOKRN.ELF=NEODOS/NEOKRN.ELF \
 		build/FONT.NFF=NEODOS/FONT.NFF \
-		$$MOD_PAIRS $$INIT_PAIR && \
+		$$MOD_PAIRS $$BIN_PAIRS $$INIT_PAIR && \
 	dd if=$$FAT_IMG of=$(DISK_IMG) bs=512 seek=2048 conv=notrunc status=progress 2>&1; \
 	rm -f $$FAT_IMG
 
@@ -72,6 +82,7 @@ clean:
 	$(MAKE) -C boot clean
 	$(MAKE) -C kernel clean
 	$(MAKE) -C modules clean
+	$(MAKE) -C apps clean
 	$(MAKE) -C init clean
 	rm -f $(DISK_IMG) $(BIOS_ERROR)
 	rm -rf $(BUILD_DIR)

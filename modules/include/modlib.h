@@ -20,6 +20,9 @@
 #define SHM_ATTACH  2
 #define SHM_DETACH  3
 #define SYSCALL_MOD            20
+#define SYSCALL_NDR            21
+#define NDR_SIZE    1
+#define NDR_COPY    2
 #define SYSCALL_WRITE       0xFF00000000000001
 
 // ======================== SYSCALL_MOD subfunctions ========================
@@ -36,6 +39,7 @@
 #define BOOTINFO_FONT   2
 #define BOOTINFO_MODCNT 3
 #define BOOTINFO_MOD    4
+#define BOOTINFO_FONT_SCALE 5
 
 // PORT_IO helpers
 #define PORT_IN  0
@@ -137,6 +141,15 @@ static inline unsigned long long mod_rep_outsw(unsigned long long port,
                                                unsigned long long buf_phys,
                                                unsigned long long words) {
     return mod_syscall4(SYSCALL_MOD, MOD_REP_OUTSW, port, buf_phys, words);
+}
+
+// ======================== NDR registry (available to everyone) ========================
+static inline unsigned long long ndr_size(void) {
+    return mod_syscall(SYSCALL_NDR, NDR_SIZE, 0, 0);
+}
+
+static inline unsigned long long ndr_copy(void* dest, unsigned long long offset, unsigned long long size) {
+    return mod_syscall4(SYSCALL_NDR, NDR_COPY, (unsigned long long)dest, offset, size);
 }
 
 // ======================== Number formatting (itoa) ========================

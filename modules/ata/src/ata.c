@@ -33,6 +33,12 @@ static uint64_t drive_sectors = 0;
 static unsigned long long buf_vaddr = 0;
 static unsigned long long buf_phys = 0;
 
+#define MAX_SHM_CACHE 8
+static unsigned long long shm_handles[MAX_SHM_CACHE];
+static unsigned long long shm_vaddrs[MAX_SHM_CACHE];
+static unsigned long long shm_paddrs[MAX_SHM_CACHE];
+static int shm_cache_count = 0;
+
 static inline uint8_t inb(uint16_t port) {
     return (uint8_t)mod_syscall4(SYSCALL_MOD, MOD_PORT_IO, PORT_W(port, 8, PORT_IN), 0, 0);
 }
@@ -65,7 +71,12 @@ static void ata_select(uint8_t drive) {
 static int ata_identify(uint8_t drive) {
     ata_select(drive);
     uint8_t st = inb(ATA_CMD);
-    if (st == 0 || st == 0xFF) return -1;
+    if (st == 0 || st == 0xFF) {
+        debug_puts("ATA: no device, st=");
+        debug_putu(st);
+        debug_puts("\n");
+        return -1;
+    }
     if (ata_wait_bsy() != 0) return -1;
 
     outb(ATA_SEC_CNT, 0);
@@ -103,16 +114,35 @@ static void handle_ipc(unsigned char* msg, unsigned long long sender) {
 
     switch (cmd) {
     case IPC_CMD_READ: {
+        if (!drive_ok) { reply[0] = -1; break; }
         uint64_t lba = args[1];
         uint64_t count = args[2];
         uint64_t shm_handle = args[3];
 
-        unsigned long long buf_v = shm_attach(shm_handle);
-        if (buf_v == (unsigned long long)-1) {
-            reply[0] = -1;
-            break;
+        // Find or cache SHM mapping — avoid attach/detach per call (~30ms each)
+        unsigned long long buf_v = 0, buf_p = 0;
+        int found = 0;
+        for (int i = 0; i < shm_cache_count; i++) {
+            if (shm_handles[i] == shm_handle) {
+                buf_v = shm_vaddrs[i];
+                buf_p = shm_paddrs[i];
+                found = 1;
+                break;
+            }
         }
-        unsigned long long buf_p = mod_phys_addr(buf_v);
+        if (!found) {
+            if (shm_cache_count >= MAX_SHM_CACHE) {
+                reply[0] = -1;
+                break;
+            }
+            buf_v = shm_attach(shm_handle);
+            if (buf_v == (unsigned long long)-1) { reply[0] = -1; break; }
+            buf_p = mod_phys_addr(buf_v);
+            shm_handles[shm_cache_count] = shm_handle;
+            shm_vaddrs[shm_cache_count] = buf_v;
+            shm_paddrs[shm_cache_count] = buf_p;
+            shm_cache_count++;
+        }
 
         int ok = 1;
         for (uint64_t s = 0; s < count; s++) {
@@ -173,9 +203,13 @@ void _start(void) {
         debug_puts("ATA: master detected, sectors=");
         debug_putu(drive_sectors);
         debug_puts("\n");
+    } else if (ata_identify(ATA_SLAVE) == 0) {
+        drive_ok = 1;
+        debug_puts("ATA: slave detected, sectors=");
+        debug_putu(drive_sectors);
+        debug_puts("\n");
     } else {
         debug_puts("ATA: no drive\n");
-        while (1) asm volatile("pause");
     }
 
     debug_puts("ATA: ready\n");

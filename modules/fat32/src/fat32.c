@@ -25,6 +25,11 @@ static unsigned long long m_vaddr = 0;
 static uint64_t vfs_pid = 0;
 static uint64_t my_pid = 0;
 
+#define MAX_SHM_CACHE 8
+static unsigned long long shm_handles[MAX_SHM_CACHE];
+static unsigned long long shm_vaddrs[MAX_SHM_CACHE];
+static int shm_cache_count = 0;
+
 static uint64_t part_lba = 0;
 static uint16_t bps = 512;
 static uint8_t  spc = 1;
@@ -81,9 +86,11 @@ static int find_in_dir(uint32_t dir_cl, const char* name, uint32_t* out_cl, uint
     char name8[8], ext[3];
     int ni = 0, ei = 0, dot = 0;
     for (int i = 0; i < nlen; i++) {
-        if (name[i] == '.') { dot = 1; continue; }
-        if (!dot) { if (ni < 8) name8[ni++] = name[i]; }
-        else { if (ei < 3) ext[ei++] = name[i]; }
+        char c = name[i];
+        if (c >= 'a' && c <= 'z') c -= 32;
+        if (c == '.') { dot = 1; continue; }
+        if (!dot) { if (ni < 8) name8[ni++] = c; }
+        else { if (ei < 3) ext[ei++] = c; }
     }
     while (ni < 8) name8[ni++] = ' ';
     while (ei < 3) ext[ei++] = ' ';
@@ -159,9 +166,9 @@ static int init_fs(void) {
     uint64_t m[8] = {GPT_FIND_ESP};
     uint64_t r[8];
     if (send_cmd(gpt_pid, m, r) != 0) { debug_puts("FAT32: gpt no esp\n"); return -1; }
-    debug_puts("FAT32: got esp lba=");
-    debug_putu(r[1]);
-    debug_puts("\n");
+        debug_puts("FAT32: esp lba=");
+        debug_putu(r[1]);
+        debug_puts("\n");
     part_lba = r[1];
 
     debug_puts("FAT32: read bpb\n");
@@ -203,8 +210,20 @@ static void handle_ipc(unsigned char* msg, unsigned long long sender) {
         uint32_t maxb = (uint32_t)a[4];
         if (maxb == 0) { reply[0] = (uint64_t)-1; break; }
 
-        unsigned long long buf_v = shm_attach(shm);
-        if (buf_v == (unsigned long long)-1) { reply[0] = (uint64_t)-1; break; }
+        // Cache SHM mapping — attach once per handle
+        unsigned long long buf_v = 0;
+        int found = 0;
+        for (int i = 0; i < shm_cache_count; i++) {
+            if (shm_handles[i] == shm) { buf_v = shm_vaddrs[i]; found = 1; break; }
+        }
+        if (!found) {
+            if (shm_cache_count >= MAX_SHM_CACHE) { reply[0] = -1; break; }
+            buf_v = shm_attach(shm);
+            if (buf_v == (unsigned long long)-1) { reply[0] = (uint64_t)-1; break; }
+            shm_handles[shm_cache_count] = shm;
+            shm_vaddrs[shm_cache_count] = buf_v;
+            shm_cache_count++;
+        }
         uint8_t* dst = (uint8_t*)buf_v;
 
         uint32_t cl_skip = off / ((uint32_t)spc * bps);
@@ -268,10 +287,11 @@ __attribute__((section(".text.start")))
 void _start(void) {
     debug_puts("FAT32: init\n");
     if (init_fs() != 0) {
-        debug_puts("FAT32: init failed\n");
-        while (1) asm volatile("pause");
+        debug_puts("FAT32: init failed, continuing anyway\n");
+        my_pid = mod_syscall(SYSCALL_GETPID, 0, 0, 0);
+    } else {
+        debug_puts("FAT32: ready\n");
     }
-    debug_puts("FAT32: ready\n");
     while (1) {
         unsigned char msg[64];
         unsigned long long snd = mod_recv(msg);

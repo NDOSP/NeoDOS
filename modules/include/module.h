@@ -19,9 +19,11 @@ typedef struct ModInfo {
     unsigned long long imports_off;
 } __attribute__((packed)) ModInfo;
 
+extern void _start(void);
+
 #define MODINFO(name) \
     static ModInfo __attribute__((section(".modinfo"), used)) __g_modinfo = { \
-        MOD_MAGIC, MOD_VERSION, name, 0, 0, 0, 0, 0, 0 \
+        MOD_MAGIC, MOD_VERSION, name, (unsigned long long)_start, 0, 0, 0, 0, 0 \
     }
 
 #endif

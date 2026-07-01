@@ -36,6 +36,7 @@ static Task* pickNext(void) {
     uint8_t bestPrio = 0;
     Task* start = currentTask ? currentTask : readyHead;
     Task* t = start;
+    int iter = 0;
     do {
         if (t->state == TASK_READY && t->priority >= bestPrio) {
             if (t->priority > bestPrio || !best) {
@@ -44,6 +45,7 @@ static Task* pickNext(void) {
             }
         }
         t = t->next;
+        if (++iter > MAX_TASKS) break;
     } while (t != start);
 
     if (!best) return NULL;
@@ -51,13 +53,23 @@ static Task* pickNext(void) {
     // Within same priority, round-robin: pick the next READY task at or after current
     if (bestPrio == (currentTask ? currentTask->priority : 0)) {
         Task* rr = start->next;
+        iter = 0;
         while (rr != start) {
             if (rr->state == TASK_READY && rr->priority == bestPrio) return rr;
             rr = rr->next;
+            if (++iter > MAX_TASKS) break;
         }
     }
 
     return best;
+}
+
+static inline void fixGsBeforeReturn(uint64_t oldCs, INTERRUPT_FRAME* frame) {
+    // If we entered the ISR from kernel mode (GS = kernel GS base via swapgs
+    // in the syscall entry) and we're returning to a user task, swapgs back
+    // to user GS (= 0) so the task's first syscall works correctly.
+    if (oldCs == 0x10 && frame->cs == 0x2B)
+        asm volatile("swapgs");
 }
 
 void timerHandler(INTERRUPT_FRAME* frame) {
@@ -65,8 +77,23 @@ void timerHandler(INTERRUPT_FRAME* frame) {
 
     totalTicks++;
 
+    // If current task is dead, don't re-queue it — pick next directly.
+    if (currentTask->state == TASK_DEAD) {
+        Task* next = pickNext();
+        if (!next) return;
+        uint64_t oldCs = frame->cs;
+        next->state = TASK_RUNNING;
+        *frame = next->frame;
+        currentTask = next;
+        fixGsBeforeReturn(oldCs, frame);
+        asm volatile("mov %0, %%cr3" : : "r"(next->cr3 ? next->cr3 : kernelCr3) : "memory");
+        return;
+    }
+
     if (--currentTask->ticksLeft > 0) return;
     currentTask->ticksLeft = TIME_SLICE;
+
+    uint64_t oldCs = frame->cs;
 
     if (currentTask->state != TASK_BLOCKED) {
         currentTask->state = TASK_READY;
@@ -84,6 +111,8 @@ void timerHandler(INTERRUPT_FRAME* frame) {
     *frame = next->frame;
 
     currentTask = next;
+
+    fixGsBeforeReturn(oldCs, frame);
 
     uint64_t target_cr3 = next->cr3 ? next->cr3 : kernelCr3;
     asm volatile("mov %0, %%cr3" : : "r"(target_cr3) : "memory");
@@ -266,10 +295,17 @@ uint64_t forkTask(const SyscallFrame* sf) {
 
 void exitTask(void) {
     DEBUG_INFO("SCHED: task '%s' (pid=%lu) exiting", currentTask->name, currentTask->id);
-    currentTask->state = TASK_DEAD;
-    currentTask->prev->next = currentTask->next;
-    currentTask->next->prev = currentTask->prev;
+    Task* dead = currentTask;
+    dead->state = TASK_DEAD;
+    dead->prev->next = dead->next;
+    dead->next->prev = dead->prev;
 
+    if (readyHead == dead)
+        readyHead = (dead->next != dead) ? dead->next : NULL;
+
+    // Interrupts are disabled (syscall via MSR_SFMASK). Enable them so
+    // the timer ISR can pick the next task and context-switch away.
+    asm volatile("sti");
     while (1) {
         asm volatile("hlt");
     }
@@ -373,19 +409,28 @@ static void interruptFrameToSyscallStack(const INTERRUPT_FRAME* iframe, SyscallF
     sf->userRsp = iframe->rsp;
 }
 
+static Task* pickReadyUserTask(void) {
+    if (!readyHead) return NULL;
+    Task* start = currentTask ? currentTask : readyHead;
+    Task* t = start;
+    int iter = 0;
+    do {
+        if (t->state == TASK_READY && t->cr3)
+            return t;
+        t = t->next;
+        if (++iter > MAX_TASKS) break;
+    } while (t != start);
+    return NULL;
+}
+
 uint64_t schedulerBlockAndSwitch(SyscallFrame* sf) {
     Task* self = currentTask;
     syscallFrameToInterrupt(sf, &self->frame);
+    self->frame.rax = -1;
     self->state = TASK_BLOCKED;
 
-    Task* next = pickNext();
+    Task* next = pickReadyUserTask();
     if (!next || next == self) {
-        self->state = TASK_READY;
-        return -1;
-    }
-
-    // Cannot switch to kernel tasks via sysretq (always forces user mode)
-    if (!next->cr3) {
         self->state = TASK_READY;
         return -1;
     }

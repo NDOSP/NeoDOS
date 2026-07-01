@@ -1,12 +1,15 @@
 [
     {"name": "SystemConfig", "type": "R_NODE", "value": 
         [
-            {"name": "TimerHz", "type": "R_U64", "value": 500}
+            {"name": "TimerHz", "type": "R_U64", "value": 500},
+            {"name": "ShellPath", "type": "R_STR8", "value": "C:\\NEODOS\\BIN\\shell"}
         ]
     },
     {"name": "Bootloader", "type": "R_NODE", "value": 
         [
             {"name": "KernelLocation", "type": "R_STR16", "value": "\\NEODOS\\NEOKRN.ELF\u0000"},
+            {"name": "InitLocation", "type": "R_STR16", "value": "\\NEODOS\\INIT.ELF\u0000"},
+            {"name": "ModulesDir", "type": "R_STR16", "value": "\\NEODOS\\MODULES\u0000"},
             {"name": "MaxCPU", "type": "R_U64", "value": 8},
             {"name": "FontLocation", "type": "R_STR16", "value": "\\NEODOS\\FONT.NFF\u0000"}
         ]

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import struct
 import os
+import sys
 
 SECTOR_SIZE = 512
 
@@ -80,7 +81,6 @@ class Fat32Image:
     def write_fat(self, cluster, value):
         offset = self.po + self.info['fat_start_sec'] * SECTOR_SIZE + cluster * 4
         v = value & 0x0FFFFFFF
-        # Write to all FAT copies
         for i in range(self.info['num_fats']):
             off = offset + i * self.info['fat_size'] * SECTOR_SIZE
             self.f.seek(off)
@@ -136,15 +136,13 @@ class Fat32Image:
         self.write_fat(sub_clusters[-1], 0x0FFFFFFF)
         
         empty_dir = bytearray(self.info['cluster_size'])
-        # Dot entry
         dot = bytearray(32)
         dot[0:11] = b'.          '
-        dot[0x0B] = 0x10  # Directory attribute
+        dot[0x0B] = 0x10
         struct.pack_into('<H', dot, 0x1A, cluster & 0xFFFF)
         struct.pack_into('<H', dot, 0x14, (cluster >> 16) & 0xFFFF)
         empty_dir[0:32] = dot
         
-        # Dot-dot entry
         dotdot = bytearray(32)
         dotdot[0:11] = b'..         '
         dotdot[0x0B] = 0x10
@@ -154,7 +152,6 @@ class Fat32Image:
         
         self.write_cluster(cluster, empty_dir)
         
-        # Add entry to parent
         idx, buf = self.find_dir_entry(parent_cluster, name_short)
         if idx >= 0 and buf[idx*32] != 0:
             attr = buf[idx*32 + 0x0B]
@@ -163,12 +160,11 @@ class Fat32Image:
         
         idx, buf = self.find_free_entry(parent_cluster)
         if idx < 0:
-            print(f"No free entry in cluster {parent_cluster}")
             return None
         
         entry = bytearray(32)
         entry[0:11] = name_short
-        entry[0x0B] = 0x10  # Directory
+        entry[0x0B] = 0x10
         struct.pack_into('<H', entry, 0x1A, cluster & 0xFFFF)
         struct.pack_into('<H', entry, 0x14, (cluster >> 16) & 0xFFFF)
         self.write_dir_entry(parent_cluster, idx, entry, buf)
@@ -183,7 +179,6 @@ class Fat32Image:
         num_clusters = (len(data) + cluster_size - 1) // cluster_size
         clusters = self.alloc_clusters(num_clusters)
         if not clusters:
-            print(f"Not enough free clusters for {name_short}")
             return False
         
         for i, c in enumerate(clusters):
@@ -199,7 +194,7 @@ class Fat32Image:
         
         entry = bytearray(32)
         entry[0:11] = name_short
-        entry[0x0B] = 0x20  # Archive
+        entry[0x0B] = 0x20
         struct.pack_into('<H', entry, 0x1A, clusters[0] & 0xFFFF)
         struct.pack_into('<H', entry, 0x14, (clusters[0] >> 16) & 0xFFFF)
         struct.pack_into('<H', entry, 0x1C, len(data) & 0xFFFF)
@@ -207,7 +202,6 @@ class Fat32Image:
         
         idx, buf = self.find_free_entry(parent_cluster)
         if idx < 0:
-            print(f"No free directory entry for {name_short}")
             return False
         
         self.write_dir_entry(parent_cluster, idx, entry, buf)
@@ -230,6 +224,18 @@ class Fat32Image:
                     return None
         return current
 
+def parse_name_short(path):
+    """Convert a filename like 'shell' or 'ata.mod' to 8.3 format bytes."""
+    name = os.path.basename(path).upper()
+    if '.' in name:
+        base, ext = name.rsplit('.', 1)
+        base = base[:8].ljust(8, ' ')
+        ext = ext[:3].ljust(3, ' ')
+    else:
+        base = name[:8].ljust(8, ' ')
+        ext = '   '
+    return base.encode('ascii') + ext.encode('ascii')
+
 def main():
     build_dir = '/home/iskra/NeoDOS/build'
     img_path = os.path.join(build_dir, 'disk.img')
@@ -239,7 +245,6 @@ def main():
     print(f"FAT32: cluster={info['cluster_size']}, data_start={info['data_start_sec']}sec")
     
     fat = Fat32Image(img_path, info)
-    
     root = info['root_cluster']
     
     efi_dir = fat.mkdirs(root, 'EFI/BOOT')
@@ -247,25 +252,53 @@ def main():
     
     print(f"EFI/BOOT cluster: {efi_dir}, NEODOS cluster: {neodos_dir}")
     
-    with open(os.path.join(build_dir, 'BOOTX64.EFI'), 'rb') as f:
-        data = f.read()
-    fat.add_file(efi_dir, b'BOOTX64 EFI', data)
-    print(f"Added BOOTX64.EFI ({len(data)} bytes)")
+    # Default hardcoded files
+    added = set()
+    default_files = [
+        ('build/BOOTX64.EFI', 'EFI/BOOT/BOOTX64.EFI'),
+        ('build/OSDATA.NDR', 'NEODOS/OSDATA.NDR'),
+        ('build/NEOKRN.ELF', 'NEODOS/NEOKRN.ELF'),
+        ('build/FONT.NFF', 'NEODOS/FONT.NFF'),
+    ]
     
-    with open(os.path.join(build_dir, 'OSDATA.NDR'), 'rb') as f:
-        data = f.read()
-    fat.add_file(neodos_dir, b'OSDATA  NDR', data)
-    print(f"Added OSDATA.NDR ({len(data)} bytes)")
+    # Parse command-line args: src=dest pairs override defaults
+    file_pairs = []
+    has_custom = False
+    for arg in sys.argv[1:]:
+        if '=' in arg:
+            has_custom = True
+            src, dest = arg.split('=', 1)
+            file_pairs.append((src, dest))
     
-    with open(os.path.join(build_dir, 'NEOKRN.ELF'), 'rb') as f:
-        data = f.read()
-    fat.add_file(neodos_dir, b'NEOKRN  ELF', data)
-    print(f"Added NEOKRN.ELF ({len(data)} bytes)")
+    if not has_custom:
+        file_pairs = default_files
     
-    with open(os.path.join(build_dir, 'FONT.NFF'), 'rb') as f:
-        data = f.read()
-    fat.add_file(neodos_dir, b'FONT    NFF', data)
-    print(f"Added FONT.NFF ({len(data)} bytes)")
+    for src, dest in file_pairs:
+        src_path = os.path.join(build_dir, src) if not os.path.isabs(src) else src
+        if not os.path.exists(src_path):
+            continue
+        
+        dest = dest.replace('\\', '/')
+        dest_dir = os.path.dirname(dest)
+        dest_name = os.path.basename(dest)
+        
+        # Create parent directories
+        parent = root
+        if dest_dir:
+            parent = fat.mkdirs(root, dest_dir)
+            if not parent:
+                print(f"Failed to create dirs: {dest_dir}")
+                continue
+        
+        name_short = parse_name_short(dest_name)
+        
+        with open(src_path, 'rb') as f:
+            data = f.read()
+        
+        if fat.add_file(parent, name_short, data):
+            print(f"wrote {src_path} -> /{dest} ({len(data)} bytes)")
+        else:
+            print(f"FAILED: {src_path} -> /{dest}")
     
     fat.close()
     print("Done!")

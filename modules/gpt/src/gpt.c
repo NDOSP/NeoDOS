@@ -217,12 +217,10 @@ __attribute__((section(".text.start")))
 void _start(void) {
     debug_puts("GPT: init\n");
 
-    if (gpt_init() != 0) {
-        debug_puts("GPT: init failed\n");
-        while (1) asm volatile("pause");
-    }
-
-    debug_puts("GPT: ready\n");
+    if (gpt_init() != 0)
+        debug_puts("GPT: init failed, continuing anyway\n");
+    else
+        debug_puts("GPT: ready\n");
 
     while (1) {
         unsigned char msg[64];

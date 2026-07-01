@@ -76,11 +76,12 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* Syste
 
     KERNEL_INFO initInfo = {0};
     bInfo.initEntry = 0;
-    Status = loadElf(L"\\NEODOS\\INIT.ELF", &initInfo);
+    CHAR16* initPath = ConfigNodeGetStr16(tree[0], (CHAR8*)"Bootloader/InitLocation", L"\\NEODOS\\INIT.ELF");
+    Status = loadElf(initPath, &initInfo);
     if (Status == EFI_NOT_FOUND) {
-        Print(L"WARNING: \\NEODOS\\INIT.ELF not found\n");
+        Print(L"WARNING: %s not found\n", initPath);
     } else if (EFI_ERROR(Status)) {
-        Print(L"WARNING: Failed to load \\NEODOS\\INIT.ELF: %r\n", Status);
+        Print(L"WARNING: Failed to load %s: %r\n", initPath, Status);
     } else {
         bInfo.initEntry = initInfo.entryPoint;
         Print(L"INFO: Loaded INIT.ELF, entry=0x%lX\n", initInfo.entryPoint);
@@ -133,9 +134,10 @@ EFI_STATUS EFIAPI efi_main(IN EFI_HANDLE ImageHandle, IN EFI_SYSTEM_TABLE* Syste
         if (EFI_ERROR(Status)) errorHandler(Status, ImageHandle);
 
         EFI_FILE_PROTOCOL* dir;
-        Status = uefi_call_wrapper(root->Open, 5, root, &dir, L"\\NEODOS\\MODULES", EFI_FILE_MODE_READ, 0);
+        CHAR16* modulesDir = ConfigNodeGetStr16(tree[0], (CHAR8*)"Bootloader/ModulesDir", L"\\NEODOS\\MODULES");
+        Status = uefi_call_wrapper(root->Open, 5, root, &dir, modulesDir, EFI_FILE_MODE_READ, 0);
         if (EFI_ERROR(Status)) {
-            Print(L"WARNING: No \\NEODOS\\MODULES directory\n");
+            Print(L"WARNING: No modules directory %s\n", modulesDir);
         } else {
             while (bInfo.moduleCount < 16) {
                 UINT8 buf[sizeof(EFI_FILE_INFO) + 256];

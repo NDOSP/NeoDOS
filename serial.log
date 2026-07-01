@@ -1,0 +1,660 @@
+[2J[01;01H[=3h[2J[01;01HBdsDxe: loading Boot0001 "UEFI QEMU HARDDISK QM00013 " from PciRoot(0x0)/Pci(0x3,0x0)/Sata(0x0,0xFFFF,0x0)
+BdsDxe: starting Boot0001 "UEFI QEMU HARDDISK QM00013 " from PciRoot(0x0)/Pci(0x3,0x0)/Sata(0x0,0xFFFF,0x0)
+Hello, World!
+INFO: (loader) ImageHandle: 0x000000001E06DA98, SystemTable: 0x000000001F9EE018, ImageBase: 0x000000001DF2E000
+INFO: (file) SimpleFileSystemProtocol: 0x000000001E953030
+INFO: (file) OpenVolume function: 0x000000001EB77DFA
+INFO: (file) Allocated 102 bytes for fileInfo
+INFO: (file) File size: 1072 bytes
+INFO: (file) Succesfully loaded \NEODOS\OSDATA.NDR file
+INFO: (config) Header CRC file=0x988E8722 calc=0x988E8722
+INFO: (config) Found 10 entries
+INFO: (config) Allocated 320 bytes for entriesPtr
+INFO: (config) Registry Table CRC from file: 0x308DB731, calculated: 0x308DB731
+INFO: (config) Entry 0 id=0x4B5EBC516699B84A offset=0x0000000000000170 rootID=0x0000000000000000
+INFO: (config) Entry 1 id=0x89E96C1B5753C1A7 offset=0x00000000000001B0 rootID=0x4B5EBC516699B84A
+INFO: (config) Entry 2 id=0x6F236C3916327E52 offset=0x00000000000001F0 rootID=0x0000000000000000
+INFO: (config) Entry 3 id=0x0AB1B910C132A3D4 offset=0x0000000000000230 rootID=0x6F236C3916327E52
+INFO: (config) Entry 4 id=0xD8B518FC1613B91A offset=0x0000000000000290 rootID=0x6F236C3916327E52
+INFO: (config) Entry 5 id=0x6742C395A645CB5C offset=0x00000000000002D0 rootID=0x6F236C3916327E52
+INFO: (config) Entry 6 id=0xB0059DECE0F3DE95 offset=0x0000000000000330 rootID=0x0000000000000000
+INFO: (config) Entry 7 id=0x47733A8F20343AA5 offset=0x0000000000000370 rootID=0xB0059DECE0F3DE95
+INFO: (config) Entry 8 id=0xCB268EA0382A8CD0 offset=0x00000000000003B0 rootID=0xB0059DECE0F3DE95
+INFO: (config) Entry 9 id=0x16FA88E01B8D91F7 offset=0x00000000000003F0 rootID=0xB0059DECE0F3DE95
+INFO: (config) Entry 0: id=0x4B5EBC516699B84A, flags=0x00000000, data_len=0
+INFO: (config) Entry 1: id=0x89E96C1B5753C1A7, flags=0x00000000, data_len=8
+INFO: (config) Entry 2: id=0x6F236C3916327E52, flags=0x00000000, data_len=0
+INFO: (config) Entry 3: id=0x0AB1B910C132A3D4, flags=0x00000000, data_len=38
+INFO: (config) Entry 4: id=0xD8B518FC1613B91A, flags=0x00000000, data_len=8
+INFO: (config) Entry 5: id=0x6742C395A645CB5C, flags=0x00000000, data_len=34
+INFO: (config) Entry 6: id=0xB0059DECE0F3DE95, flags=0x00000000, data_len=0
+INFO: (config) Entry 7: id=0x47733A8F20343AA5, flags=0x00000000, data_len=8
+INFO: (config) Entry 8: id=0xCB268EA0382A8CD0, flags=0x00000000, data_len=8
+INFO: (config) Entry 9: id=0x16FA88E01B8D91F7, flags=0x00000000, data_len=8
+INFO: (config) Allocated 528 bytes for registry tree
+INFO: (video) Found 2 video device handles
+WARNING: (video) Could not resolve display preferred resolution via EDID
+INFO: (video) Using resolution 600x480
+INFO: (file) SimpleFileSystemProtocol: 0x000000001E953030
+INFO: (file) OpenVolume function: 0x000000001EB77DFA
+INFO: (file) Allocated 102 bytes for fileInfo
+INFO: (file) File size: 212520 bytes
+INFO: (file) Succesfully loaded \NEODOS\NEOKRN.ELF file
+INFO: (kernel) ELF class ok=0x00000002
+INFO: (kernel) ELF endianness ok=0x00000001
+INFO: (kernel) ELF machine ok=0x0000003E
+INFO: (kernel) ELF type ok=0x00000002
+INFO: (kernel) Loading program header: p_type=0x00000001; p_offset=0x00001000; p_filesz=0x0002A000; p_memsz=0x0002A000
+INFO: (kernel) Kernel segment at 0x0000000000001000 size=172032 bytes
+INFO: (kernel) Allocated 42 pages for segment(p_vaddr: 0xFFFFFFFF80000000) at 0x000000001DED0000
+INFO: (kernel) Loaded segment at 0x000000001DED0000, size 172032 bytes from file offset 0x0000000000001000
+INFO: (kernel) Loaded Program Segment:
+	p_paddr: 0x000000001DED0000
+	p_vaddr: 0xFFFFFFFF80000000
+	p_memsz: 172032 bytes
+INFO: (kernel) Loading program header: p_type=0x00000001; p_offset=0x0002B000; p_filesz=0x00000340; p_memsz=0x00022A60
+INFO: (kernel) Kernel segment at 0x000000000002B000 size=141920 bytes
+INFO: (kernel) Allocated 35 pages for segment(p_vaddr: 0xFFFFFFFF80006000) at 0x000000001DEAD000
+INFO: (kernel) Loaded segment at 0x000000001DEAD000, size 832 bytes from file offset 0x000000000002B000
+INFO: (kernel) Cleared .bss [832..141920) = 141088 bytes
+INFO: (kernel) Loaded Program Segment:
+	p_paddr: 0x000000001DEAD000
+	p_vaddr: 0xFFFFFFFF80006000
+	p_memsz: 141920 bytes
+INFO: (kernel) Loading program header: p_type=0x00000001; p_offset=0x0002C000; p_filesz=0x00006000; p_memsz=0x00006000
+INFO: (kernel) Kernel segment at 0x000000000002C000 size=24576 bytes
+INFO: (kernel) Allocated 6 pages for segment(p_vaddr: 0xFFFFFFFF8002A000) at 0x000000001DF53000
+INFO: (kernel) Loaded segment at 0x000000001DF53000, size 24576 bytes from file offset 0x000000000002C000
+INFO: (kernel) Found .bootinfo Program Segment at (paddr: 0x000000001DF53000, vaddr: 0xFFFFFFFF8002A000)
+INFO: (kernel) Loaded Program Segment:
+	p_paddr: 0x000000001DF53000
+	p_vaddr: 0xFFFFFFFF8002A000
+	p_memsz: 24576 bytes
+INFO: (file) SimpleFileSystemProtocol: 0x000000001E953030
+INFO: (file) OpenVolume function: 0x000000001EB77DFA
+INFO: (file) Allocated 98 bytes for fileInfo
+INFO: (file) File size: 5200 bytes
+INFO: (file) Succesfully loaded \NEODOS\INIT.ELF file
+INFO: (kernel) ELF class ok=0x00000002
+INFO: (kernel) ELF endianness ok=0x00000001
+INFO: (kernel) ELF machine ok=0x0000003E
+INFO: (kernel) ELF type ok=0x00000002
+INFO: (kernel) Loading program header: p_type=0x00000001; p_offset=0x00001000; p_filesz=0x0000026F; p_memsz=0x0000026F
+INFO: (kernel) Kernel segment at 0x0000000000001000 size=623 bytes
+INFO: (kernel) Allocated 1 pages for segment(p_vaddr: 0x0000000000400000) at 0x000000001DF4F000
+INFO: (kernel) Loaded segment at 0x000000001DF4F000, size 623 bytes from file offset 0x0000000000001000
+INFO: (kernel) Loaded Program Segment:
+	p_paddr: 0x000000001DF4F000
+	p_vaddr: 0x0000000000400000
+	p_memsz: 623 bytes
+INFO: (kernel) Empty program header(p_type=0x00000001; p_offset=0x000000B0; p_filesz=0x00000000; p_memsz=0x00000000), skipping...
+INFO: Loaded INIT.ELF, entry=0x0000000000400000
+INFO: (acpi) Checking 0x000000001F8EDF98 from 0x000000001F9EEC98
+INFO: (acpi) Vendor GUID: EE4E5898-3914-4259-9D6E-DC7BD79403CF
+INFO: (acpi) Checking 0x000000001FF27B20 from 0x000000001F9EECB0
+INFO: (acpi) Vendor GUID: 05AD34BA-6F02-4214-952E-4DA0398E2BB9
+INFO: (acpi) Checking 0x000000001F8E9018 from 0x000000001F9EECC8
+INFO: (acpi) Vendor GUID: 7739F24C-93D7-11D4-9A3A-0090273FC14D
+INFO: (acpi) Checking 0x000000001FF27440 from 0x000000001F9EECE0
+INFO: (acpi) Vendor GUID: 4C19049F-4137-4DD3-9C10-8B97A83FFDFA
+INFO: (acpi) Checking 0x000000001FF29960 from 0x000000001F9EECF8
+INFO: (acpi) Vendor GUID: 49152E77-1ADA-4764-B7A2-7AFEFED95E8B
+INFO: (acpi) Checking 0x000000001F91E018 from 0x000000001F9EED10
+INFO: (acpi) Vendor GUID: 060CC026-4C0D-4DDA-8F41-595FEF00A502
+INFO: (acpi) Checking 0x000000001F91A000 from 0x000000001F9EED28
+INFO: (acpi) Vendor GUID: EB9D2D31-2D88-11D3-9A16-0090273FC14D
+INFO: (acpi) Checking 0x000000001FB7E000 from 0x000000001F9EED40
+INFO: (acpi) Vendor GUID: EB9D2D30-2D88-11D3-9A16-0090273FC14D
+INFO: (acpi) Checking 0x000000001FB7E014 from 0x000000001F9EED58
+INFO: (acpi) Vendor GUID: 8868E871-E4F1-11D3-BC22-0080C73C8881
+INFO: (acpi) Found RDSP at 0x000000001FB7E014
+INFO: (acpi) RSDP Signature: RSD PTR 
+INFO: (acpi) ACPI Revision: 2
+INFO: (acpi) OEM ID: 42 4F 43 48 53 20 
+INFO: (file) SimpleFileSystemProtocol: 0x000000001E953030
+INFO: (file) OpenVolume function: 0x000000001EB77DFA
+INFO: (file) Allocated 98 bytes for fileInfo
+INFO: (file) File size: 3056 bytes
+INFO: (file) Succesfully loaded \NEODOS\FONT.NFF file
+INFO: (loader) PML4 Address: 0x000000001DF4E000
+INFO: (file) SimpleFileSystemProtocol: 0x000000001E953030
+INFO: (file) OpenVolume function: 0x000000001EB77DFA
+INFO: (file) Allocated 102 bytes for fileInfo
+INFO: (file) File size: 1072 bytes
+INFO: (file) Succesfully loaded \NEODOS\OSDATA.NDR file
+INFO: (file) Persistent load of \NEODOS\OSDATA.NDR at 0x000000001DF4C000 (1 pages)
+INFO: (file) SimpleFileSystemProtocol: 0x000000001E953030
+INFO: (file) OpenVolume function: 0x000000001EB77DFA
+INFO: (file) Allocated 96 bytes for fileInfo
+INFO: (file) File size: 2904 bytes
+INFO: (file) Succesfully loaded \NEODOS\MODULES\ata.mod file
+INFO: (file) Persistent load of \NEODOS\MODULES\ata.mod at 0x000000001DF48000 (1 pages)
+INFO: Loaded module 'ata.mod' (2904 bytes)
+INFO: (file) SimpleFileSystemProtocol: 0x000000001E953030
+INFO: (file) OpenVolume function: 0x000000001EB77DFA
+INFO: (file) Allocated 96 bytes for fileInfo
+INFO: (file) File size: 4936 bytes
+INFO: (file) Succesfully loaded \NEODOS\MODULES\elf.mod file
+INFO: (file) Persistent load of \NEODOS\MODULES\elf.mod at 0x000000001DEA3000 (2 pages)
+INFO: Loaded module 'elf.mod' (4936 bytes)
+INFO: (file) SimpleFileSystemProtocol: 0x000000001E953030
+INFO: (file) OpenVolume function: 0x000000001EB77DFA
+INFO: (file) Allocated 100 bytes for fileInfo
+INFO: (file) File size: 4488 bytes
+INFO: (file) Succesfully loaded \NEODOS\MODULES\fat32.mod file
+INFO: (file) Persistent load of \NEODOS\MODULES\fat32.mod at 0x000000001DEA1000 (2 pages)
+INFO: Loaded module 'fat32.mod' (4488 bytes)
+INFO: (file) SimpleFileSystemProtocol: 0x000000001E953030
+INFO: (file) OpenVolume function: 0x000000001EB77DFA
+INFO: (file) Allocated 96 bytes for fileInfo
+INFO: (file) File size: 4832 bytes
+INFO: (file) Succesfully loaded \NEODOS\MODULES\gpt.mod file
+INFO: (file) Persistent load of \NEODOS\MODULES\gpt.mod at 0x000000001DE9F000 (2 pages)
+INFO: Loaded module 'gpt.mod' (4832 bytes)
+INFO: (file) SimpleFileSystemProtocol: 0x000000001E953030
+INFO: (file) OpenVolume function: 0x000000001EB77DFA
+INFO: (file) Allocated 96 bytes for fileInfo
+INFO: (file) File size: 1056 bytes
+INFO: (file) Succesfully loaded \NEODOS\MODULES\kbd.mod file
+INFO: (file) Persistent load of \NEODOS\MODULES\kbd.mod at 0x000000001DEA6000 (1 pages)
+INFO: Loaded module 'kbd.mod' (1056 bytes)
+INFO: (file) SimpleFileSystemProtocol: 0x000000001E953030
+INFO: (file) OpenVolume function: 0x000000001EB77DFA
+INFO: (file) Allocated 100 bytes for fileInfo
+INFO: (file) File size: 9120 bytes
+INFO: (file) Succesfully loaded \NEODOS\MODULES\ramfs.mod file
+INFO: (file) Persistent load of \NEODOS\MODULES\ramfs.mod at 0x000000001DE99000 (3 pages)
+INFO: Loaded module 'ramfs.mod' (9120 bytes)
+INFO: (file) SimpleFileSystemProtocol: 0x000000001E953030
+INFO: (file) OpenVolume function: 0x000000001EB77DFA
+INFO: (file) Allocated 96 bytes for fileInfo
+INFO: (file) File size: 4160 bytes
+INFO: (file) Succesfully loaded \NEODOS\MODULES\vfs.mod file
+INFO: (file) Persistent load of \NEODOS\MODULES\vfs.mod at 0x000000001DE97000 (2 pages)
+INFO: Loaded module 'vfs.mod' (4160 bytes)
+INFO: (file) SimpleFileSystemProtocol: 0x000000001E953030
+INFO: (file) OpenVolume function: 0x000000001EB77DFA
+INFO: (file) Allocated 100 bytes for fileInfo
+INFO: (file) File size: 1688 bytes
+INFO: (file) Succesfully loaded \NEODOS\MODULES\video.mod file
+INFO: (file) Persistent load of \NEODOS\MODULES\video.mod at 0x000000001DE9E000 (1 pages)
+INFO: Loaded module 'video.mod' (1688 bytes)
+INFO: (video) Framebuffer info:
+	Framebuffer: 00000000C0000000
+	Resolution: 1024x768
+	Scan line: 1024
+	Pixel format: 1
+INFO: (kernel) Hello, NeoDOS kernel booting
+INFO: (kernel) initializing IDT
+INFO: (kernel) initializing ACPI
+INFO: (kernel) initializing syscalls
+INFO: (kernel) initializing BSP LAPIC
+INFO: (kernel) SMP: initAPs started
+INFO: (kernel) SMP: 1 CPU only
+SMP: 1 CPU (BSP only)
+INFO: (kernel) initializing scheduler
+INFO: (kernel) SCHED: task 'idle' created (id=0)
+INFO: (kernel) SCHED: initialized
+INFO: (kernel) initializing module manager
+INFO: (kernel) MODMAN: module registry initialized
+INFO: (kernel) SHM: shared memory subsystem initialized
+INFO: (kernel) SCHED: user task 'init' (prio=128) created (id=1)
+INFO: (kernel) INIT: task created entry=0x0000000000400000 stack=0x000000000000B000
+INFO: (kernel) launching modules
+INFO: (kernel) SCHED: user task 'ata.mod' (prio=64) created (id=2)
+INFO: (kernel) MODMAN: registered pid=2 name='ata_pio'
+INFO: (kernel) MODMAN: registered pid=2 name='ata_pio' from .modinfo
+INFO: (kernel) SCHED: module 'ata.mod' launched (entry=0x000000001DF48000, size=2904, pages=1)
+INFO: (kernel) SCHED: user task 'elf.mod' (prio=64) created (id=3)
+INFO: (kernel) MODMAN: registered pid=3 name='elf'
+INFO: (kernel) MODMAN: registered pid=3 name='elf' from .modinfo
+INFO: (kernel) SCHED: module 'elf.mod' launched (entry=0x000000001DEA3000, size=4936, pages=2)
+INFO: (kernel) SCHED: user task 'fat32.mod' (prio=64) created (id=4)
+INFO: (kernel) MODMAN: registered pid=4 name='fat32'
+INFO: (kernel) MODMAN: registered pid=4 name='fat32' from .modinfo
+INFO: (kernel) SCHED: module 'fat32.mod' launched (entry=0x000000001DEA1000, size=4488, pages=2)
+INFO: (kernel) SCHED: user task 'gpt.mod' (prio=64) created (id=5)
+INFO: (kernel) MODMAN: registered pid=5 name='gpt'
+INFO: (kernel) MODMAN: registered pid=5 name='gpt' from .modinfo
+INFO: (kernel) SCHED: module 'gpt.mod' launched (entry=0x000000001DE9F000, size=4832, pages=2)
+INFO: (kernel) SCHED: user task 'kbd.mod' (prio=64) created (id=6)
+INFO: (kernel) MODMAN: registered pid=6 name='kbd'
+INFO: (kernel) MODMAN: registered pid=6 name='kbd' from .modinfo
+INFO: (kernel) SCHED: module 'kbd.mod' launched (entry=0x000000001DEA6000, size=1056, pages=1)
+INFO: (kernel) SCHED: user task 'ramfs.mod' (prio=64) created (id=7)
+INFO: (kernel) MODMAN: registered pid=7 name='ramfs'
+INFO: (kernel) MODMAN: registered pid=7 name='ramfs' from .modinfo
+INFO: (kernel) SCHED: module 'ramfs.mod' launched (entry=0x000000001DE99000, size=9120, pages=3)
+INFO: (kernel) SCHED: user task 'vfs.mod' (prio=64) created (id=8)
+INFO: (kernel) MODMAN: registered pid=8 name='vfs'
+INFO: (kernel) MODMAN: registered pid=8 name='vfs' from .modinfo
+INFO: (kernel) SCHED: module 'vfs.mod' launched (entry=0x000000001DE97000, size=4160, pages=2)
+INFO: (kernel) SCHED: user task 'video.mod' (prio=64) created (id=9)
+INFO: (kernel) MODMAN: registered pid=9 name='video'
+INFO: (kernel) MODMAN: registered pid=9 name='video' from .modinfo
+INFO: (kernel) SCHED: module 'video.mod' launched (entry=0x000000001DE9E000, size=1688, pages=1)
+INFO: (kernel) scheduler ready, enabling interrupts
+INIT: launching shell
+ATA: init
+ATA: no drive
+ELF: init
+FAT32: init
+FAT32: find ata
+FAT32: find gpt
+FAT32: shm_create
+INFO: (kernel) SHM: created handle=1 paddr=0x000000000011F000 pages=2
+FAT32: shm_attach
+INFO: (kernel) SHM: attached handle=1 at vaddr=0x0000000001004000 (pid=4)
+FAT32: send to gpt
+GPT: init
+GPT: ata_pio pid=2
+INFO: (kernel) SHM: created handle=2 paddr=0x0000000000124000 pages=1
+INFO: (kernel) SHM: attached handle=2 at vaddr=0x0000000001002000 (pid=5)
+KBD: init
+RAMFS: init
+VFS: init
+VIDEO: ready
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+RAMFS: registered with VFS as T:
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+ELF: VFS_OPEN fail
+ELF: EXECV cleanup
+INIT: exec shell failed

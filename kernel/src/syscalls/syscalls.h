@@ -33,6 +33,10 @@
 //   sub=3: BOOTINFO_SIZE(type)             -> size
 //   sub=4: PORT_IO(port|w<<16|d<<24, val)  -> in val / 0
 #define SYSCALL_MOD            20
+// NDR registry (available to everyone)
+#define SYSCALL_NDR            21
+#define NDR_SIZE    1
+#define NDR_COPY    2
 // Debug
 #define SYSCALL_WRITE       0xFF00000000000001
 

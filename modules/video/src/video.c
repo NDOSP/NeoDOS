@@ -12,6 +12,7 @@ static int fb_format = 0;
 static FontInfo* font = 0;
 static int font_w = 0;
 static int font_h = 0;
+static int text_scale = 0;
 
 MODINFO("video");
 
@@ -44,21 +45,26 @@ static void draw_char(char c, int x, int y, uint32_t color) {
     if (!bmp) return;
 
     uint32_t bytes_per_row = font->bytesPerGlyph / font_h;
+    int s = text_scale;
     for (int row = 0; row < font_h; row++) {
         for (int col = 0; col < font_w; col++) {
             uint32_t byte_idx = row * bytes_per_row + (col / 8);
-            if (bmp[byte_idx] & (0x80 >> (col % 8)))
-                putpixel(x + col, y + row, color);
+            if (bmp[byte_idx] & (0x80 >> (col % 8))) {
+                for (int dy = 0; dy < s; dy++)
+                    for (int dx = 0; dx < s; dx++)
+                        putpixel(x + col * s + dx, y + row * s + dy, color);
+            }
         }
     }
 }
 
-static void draw_string(const char* s, int x, int y, uint32_t color) {
-    if (!s) return;
-    while (*s) {
-        if (*s == '\n') { x = 0; y += font_h; }
-        else { draw_char(*s, x, y, color); x += font_w; }
-        s++;
+static void draw_string(const char* str, int x, int y, uint32_t color) {
+    if (!str) return;
+    int s = text_scale;
+    while (*str) {
+        if (*str == '\n') { x = 0; y += font_h * s; }
+        else { draw_char(*str, x, y, color); x += font_w * s; }
+        str++;
     }
 }
 
@@ -107,6 +113,12 @@ static void handle_ipc(unsigned char* buf, unsigned long long sender) {
     case 4: // clearScreen — pure black
         clear_screen();
         break;
+    case 5: { // setTextScale(scale)
+        uint32_t scale_val = *(uint32_t*)(buf + 8);
+        if (scale_val >= 1 && scale_val <= 4)
+            text_scale = (int)scale_val;
+        break;
+    }
     }
 }
 
@@ -154,6 +166,14 @@ void _start(void) {
     font = (FontInfo*)font_vaddr;
     font_w = font->fontWidth;
     font_h = font->fontHeight;
+
+    uint64_t scale = 0;
+    ret = mod_syscall(SYSCALL_MOD, MOD_BOOTINFO,
+        BOOTINFO_ARG(BOOTINFO_FONT_SCALE, sizeof(scale)), (unsigned long long)&scale);
+    if (ret == sizeof(scale) && scale >= 1 && scale <= 4)
+        text_scale = (int)scale;
+    else
+        text_scale = 1;
 
     debug_puts("VIDEO: ready\n");
 
