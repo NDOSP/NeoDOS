@@ -90,7 +90,7 @@ void _start(void) {
     uint64_t elf_pid = find_mod("elf");
     if (!elf_pid) {
         debug_puts("INIT: elf mod not found\n");
-        while (1) asm volatile("pause");
+        exit();
     }
 
     uint64_t msg[8];
@@ -107,10 +107,9 @@ void _start(void) {
         do { snd = mod_recv(r); } while (snd != elf_pid);
         if (r[0] == 0) {
             debug_puts("INIT: shell launched, exiting\n");
-            mod_syscall(SYSCALL_EXIT, 0, 0, 0);
         }
     }
 
     debug_puts("INIT: exec shell failed\n");
-    while (1) asm volatile("pause");
+    exit();
 }

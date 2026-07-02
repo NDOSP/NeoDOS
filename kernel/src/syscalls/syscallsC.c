@@ -370,6 +370,21 @@ uint64_t syscallDispatcher(uint64_t num, uint64_t arg1, uint64_t arg2, uint64_t 
             return 0;
         }
 
+        case 8: { // CHANGE_PROCESS_NAME(pid, name_ptr, name_size)
+            if (arg4 > 23) return -1;
+            char name[24] = {0};
+            memcpy(name, arg3, arg4);
+
+            return changeTaskName(arg2, (char*)name);
+        }
+
+        case 9: { // UNREGISTER_SELF
+            task->isModule = 0;
+            modman_unregister_current();
+
+            return 0;
+        }
+
         default:
             return -1ULL;
         }

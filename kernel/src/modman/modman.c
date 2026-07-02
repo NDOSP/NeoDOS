@@ -1,6 +1,7 @@
 #include "modman.h"
 #include "memory/memutils.h"
 #include "debug.h"
+#include "scheduler/scheduler.h"
 
 typedef struct {
     uint64_t pid;
@@ -54,9 +55,11 @@ static void copy_name(char* dst, const char* src) {
 
 int modman_register(uint64_t pid, const char* name) {
     if (!initialized) return -1;
+
     int slot = find_by_pid(pid);
     if (slot == -1) slot = free_slot();
     if (slot == -1) return -1;
+
     mods[slot].pid = pid;
     mods[slot].active = 1;
     copy_name(mods[slot].name, name);
@@ -66,11 +69,23 @@ int modman_register(uint64_t pid, const char* name) {
 
 int modman_unregister(uint64_t pid) {
     if (!initialized) return -1;
+
     int slot = find_by_pid(pid);
     if (slot == -1) return -1;
+    
     mods[slot].active = 0;
     DEBUG_INFO("MODMAN: unregistered pid=%lu", pid);
     return 0;
+}
+
+int modman_unregister_current() {
+    uint64_t pid = getCurrentPid();
+    int res = modman_unregister(pid);
+    if (res != 0) {
+        DEBUG_INFO("MODMAN: failed to unregister pid=%lu", pid);
+    }
+
+    return res;
 }
 
 int modman_lookup(const char* name, uint64_t* out_pid) {

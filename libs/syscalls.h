@@ -44,4 +44,24 @@ static inline void exit() {
     syscall(SYSCALL_EXIT, 0, 0, 0, 0);
 }
 
+static inline unsigned long long send(unsigned long long pid, void* buf) {
+    return syscall(SYSCALL_SEND, pid, (unsigned long long)buf, 0, 0);
+}
+
+static inline unsigned long long recv(void* buf) {
+    return syscall(SYSCALL_RECV, (unsigned long long)buf, 0, 0, 0);
+}
+
+static inline unsigned long long shm_create(unsigned long long pages) {
+    return syscall(SYSCALL_SHM, SHM_CREATE, pages, 0, 0);
+}
+
+static inline unsigned long long shm_attach(unsigned long long handle) {
+    return syscall(SYSCALL_SHM, SHM_ATTACH, handle, 0, 0);
+}
+
+static inline unsigned long long shm_detach(unsigned long long handle) {
+    return syscall(SYSCALL_SHM, SHM_DETACH, handle, 0, 0);
+}
+
 #endif // SYSCALLS

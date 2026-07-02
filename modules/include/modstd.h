@@ -38,4 +38,14 @@ static uint64_t find_mod(const char* name) {
     return 0;
 }
 
+#define MOD_PHYS_MAP   1
+#define MOD_BOOTINFO   2
+#define MOD_BOOTINFO_SIZE 3
+#define MOD_PORT_IO    4
+#define MOD_PHYS_ADDR  5
+#define MOD_REP_INSW   6
+#define MOD_REP_OUTSW  7
+#define MOD_CHANGE_PROCESS_NAME 8
+#define MOD_UNREGISTER 9
+
 #endif // MODSTD_H

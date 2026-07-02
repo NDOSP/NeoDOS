@@ -68,5 +68,6 @@ void launchModules(void);
 uint64_t schedulerBlockAndSwitch(SyscallFrame* sf);
 int schedulerWake(uint64_t pid);
 void killTaskAndSwitch(INTERRUPT_FRAME* frame);
+int changeTaskName(uint64_t pid, char name[24]);
 
 #endif

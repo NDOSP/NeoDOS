@@ -42,16 +42,7 @@ static inline unsigned long long mod_syscall(unsigned long long n,
                                               unsigned long long a1,
                                               unsigned long long a2,
                                               unsigned long long a3) {
-    unsigned long long ret;
-    register unsigned long long rax asm("rax") = n;
-    register unsigned long long rdi asm("rdi") = a1;
-    register unsigned long long rsi asm("rsi") = a2;
-    register unsigned long long rdx asm("rdx") = a3;
-    asm volatile("syscall"
-                 : "=a"(ret)
-                 : "r"(rax), "r"(rdi), "r"(rsi), "r"(rdx)
-                 : "rcx", "r11", "memory");
-    return ret;
+    return syscall(n, a1, a2, a3, 0);
 }
 
 static inline unsigned long long mod_syscall4(unsigned long long n,
@@ -59,17 +50,7 @@ static inline unsigned long long mod_syscall4(unsigned long long n,
                                                unsigned long long a2,
                                                unsigned long long a3,
                                                unsigned long long a4) {
-    unsigned long long ret;
-    register unsigned long long rax asm("rax") = n;
-    register unsigned long long rdi asm("rdi") = a1;
-    register unsigned long long rsi asm("rsi") = a2;
-    register unsigned long long rdx asm("rdx") = a3;
-    register unsigned long long r10 asm("r10") = a4;
-    asm volatile("syscall"
-                 : "=a"(ret)
-                 : "r"(rax), "r"(rdi), "r"(rsi), "r"(rdx), "r"(r10)
-                 : "rcx", "r11", "memory");
-    return ret;
+    return syscall(n, a1, a2, a3, a4);
 }
 
 // ======================== Debug serial output ========================
@@ -81,11 +62,11 @@ static inline void debug_puts(const char* s) {
 
 // ======================== IPC wrappers ========================
 static inline unsigned long long mod_send(unsigned long long pid, void* buf) {
-    return mod_syscall(SYSCALL_SEND, pid, (unsigned long long)buf, 0);
+    return send(pid, buf);
 }
 
 static inline unsigned long long mod_recv(void* buf) {
-    return mod_syscall(SYSCALL_RECV, (unsigned long long)buf, 0, 0);
+    return recv(buf);
 }
 
 static inline unsigned long long mod_recv_from(unsigned long long pid, void* buf) {
@@ -96,19 +77,6 @@ static inline unsigned long long mod_recv_from(unsigned long long pid, void* buf
 static inline int mod_list(void* entries, int max) {
     return (int)mod_syscall(SYSCALL_MOD_LIST, (unsigned long long)entries,
                             (unsigned long long)max, 0);
-}
-
-// ======================== Shared memory ========================
-static inline unsigned long long shm_create(unsigned long long pages) {
-    return mod_syscall4(SYSCALL_SHM, SHM_CREATE, pages, 0, 0);
-}
-
-static inline unsigned long long shm_attach(unsigned long long handle) {
-    return mod_syscall4(SYSCALL_SHM, SHM_ATTACH, handle, 0, 0);
-}
-
-static inline unsigned long long shm_detach(unsigned long long handle) {
-    return mod_syscall4(SYSCALL_SHM, SHM_DETACH, handle, 0, 0);
 }
 
 // ======================== Module-only helpers (SYSCALL_MOD) ========================

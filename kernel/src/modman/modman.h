@@ -25,5 +25,6 @@ int  modman_lookup(const char* name, uint64_t* out_pid);
 int  modman_lookup_pid(uint64_t pid, char* out_name);
 int  modman_list(ModEntry* entries, int max);
 int  modman_register_embedded(uint64_t pid, void* data, uint64_t size, uint64_t* out_entry_off);
+int modman_unregister_current();
 
 #endif

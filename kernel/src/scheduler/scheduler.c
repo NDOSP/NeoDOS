@@ -303,12 +303,7 @@ void exitTask(void) {
     if (readyHead == dead)
         readyHead = (dead->next != dead) ? dead->next : NULL;
 
-    // Interrupts are disabled (syscall via MSR_SFMASK). Enable them so
-    // the timer ISR can pick the next task and context-switch away.
-    asm volatile("sti");
-    while (1) {
-        asm volatile("hlt");
-    }
+    // TODO: Switch context
 }
 
 void killTaskAndSwitch(INTERRUPT_FRAME* frame) {
@@ -364,6 +359,13 @@ int getTaskPriority(uint64_t pid, uint8_t* priority) {
     Task* t = findTask(pid);
     if (!t || !priority) return -1;
     *priority = t->priority;
+    return 0;
+}
+
+int changeTaskName(uint64_t pid, char name[24]) {
+    Task* t = findTask(pid);
+    if (!t || !name) return -1;
+    memcpy(t->name, name, 24);
     return 0;
 }
 

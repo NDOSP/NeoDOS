@@ -1,7 +1,7 @@
-#include "modlib.h"
+#include "modstd.h"
 #include <stdint.h>
 
-MODINFO("elf");
+REGISTER_MODULE("elf")
 
 #define VFS_OPEN    3
 #define VFS_READ    4
@@ -12,8 +12,6 @@ MODINFO("elf");
 
 #define PAGE_SIZE   4096
 #define DEFAULT_BASE 0x1000000ULL
-
-typedef struct { uint64_t pid; char name[64]; } ModEntry;
 
 // ELF64 constants
 #define EI_MAG       0
@@ -64,19 +62,6 @@ static uint64_t exec_sp = 0;
 static unsigned long long shm_handles[MAX_SHM_CACHE];
 static unsigned long long shm_vaddrs[MAX_SHM_CACHE];
 static int shm_cache_count = 0;
-
-static uint64_t find_mod(const char* name) {
-    unsigned long long buf = mod_syscall(SYSCALL_ALLOC_PAGES, 2, 0, 0);
-    if (buf == 0 || buf == (unsigned long long)-1) return 0;
-    int cnt = mod_list((void*)buf, 64);
-    ModEntry* e = (ModEntry*)buf;
-    for (int i = 0; i < cnt; i++) {
-        int m = 1;
-        for (int j = 0; name[j]; j++) { if (e[i].name[j] != name[j]) { m = 0; break; } }
-        if (m && e[i].pid) return e[i].pid;
-    }
-    return 0;
-}
 
 static int vfs_send(uint64_t* msg, uint64_t* reply) {
     if (!vfs_pid) return -1;
@@ -287,6 +272,9 @@ static void handle_ipc(unsigned char* msg, unsigned long long sender) {
         debug_puts("ELF: forking\n");
         uint64_t child_pid = mod_syscall(SYSCALL_FORK, 0, 0, 0);
         if (child_pid == 0) {
+            mod_syscall4(SYSCALL_MOD, MOD_CHANGE_PROCESS_NAME, child_pid, "last_path_part\0", 16); // TODO: Get path last part to name process
+            mod_syscall(SYSCALL_MOD, MOD_UNREGISTER, 0, 0);
+
             // Child is already in ring 3 (CS=0x2B from fork return).
             // Set the stack pointer, zero registers, and jump to the entry.
             // Push exec_entry onto the new stack before the xors and pop it
@@ -340,22 +328,20 @@ static void handle_ipc(unsigned char* msg, unsigned long long sender) {
     mod_send(sender, reply);
 }
 
-__attribute__((section(".text.start")))
-void _start(void) {
-    debug_puts("ELF: init\n");
-
+void init(void) {
     vfs_pid = find_mod("vfs");
     if (!vfs_pid) {
         debug_puts("ELF: VFS not found\n");
     }
-
-    while (1) {
-        if (!vfs_pid) vfs_pid = find_mod("vfs");
-        unsigned char msg[64];
-        unsigned long long snd = mod_recv(msg);
-        if (snd != (unsigned long long)-1)
-            handle_ipc(msg, snd);
-        else
-            asm volatile("pause");
-    }
 }
+
+void loop(void) {
+    if (!vfs_pid) vfs_pid = find_mod("vfs");
+    unsigned char msg[64];
+    unsigned long long snd = mod_recv(msg);
+    if (snd != (unsigned long long)-1)
+        handle_ipc(msg, snd);
+    else
+        asm volatile("pause");
+}
+
