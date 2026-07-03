@@ -18,24 +18,40 @@ static uint64_t find_mod(const char* name) {
     return 0;
 }
 
+#define MODTABLE_SIZE 64
+#define MAX_CONNECTED_MODS 64
+
+typedef struct {
+    uint64_t pid;
+    uint64_t functions[MODTABLE_SIZE - 1];
+} ModTable;
+
+#define MODTABLE_CALL(modtable, function, ...) \
+    ((typeof(function))((uint64_t)modtable + (uint64_t)function))(__VA_ARGS__)
+
+#define MODTABLE_BYTES MODTABLE_SIZE * sizeof(ModTable)
 #define MOD_GET_TABLE 0xFEEFDEED3883EDDE
 
-static void* get_mod_table(const char* name) {
+static ModTable* get_mod_table(const char* name) {
     uint64_t mod_pid = find_mod(name);
     uint64_t mes[8] = {0};
 
     mes[0] = MOD_GET_TABLE;
     send(mod_pid, mes);
 
+    uint64_t shm;
     while(1) {
         unsigned char msg[64];
         unsigned long long snd = recv(msg);
 
-        if (snd == mod_pid)
-            return *(void**)msg;
-        else
+        if (snd == mod_pid) {
+            shm = *(uint64_t*)msg;
+            break;
+        } else
             asm volatile("pause");
     }
+
+    return (ModTable*)(shm_attach(shm) + 16); // TODO: Remove + 16 (for now its only working with +16)
 }
 
 #endif // MODS

@@ -9,6 +9,7 @@
 #include "shm/shm.h"
 #include "bootinfo.h"
 #include "serial.h"
+#include "debug.h"
 
 extern void syscall_entry(void); 
 PerCpuData perCpuArray[255];

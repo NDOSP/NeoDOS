@@ -57,7 +57,7 @@ static inline unsigned long long mod_syscall4(unsigned long long n,
 static inline void debug_puts(const char* s) {
     unsigned long long len = 0;
     while (s[len]) len++;
-    mod_syscall(SYSCALL_WRITE, (unsigned long long)s, len, 0);
+    syscall(SYSCALL_WRITE, (unsigned long long)s, len, 0, 0);
 }
 
 // ======================== IPC wrappers ========================

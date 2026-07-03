@@ -58,7 +58,7 @@ static int alloc_file(void) {
 }
 
 static int send_cmd(uint64_t pid, uint64_t* msg, uint64_t* reply) {
-    mod_send(pid, msg);
+    send(pid, msg);
     unsigned long long snd;
     do { snd = mod_recv_from(pid, reply); } while (snd != pid);
     return (reply[0] == 0) ? 0 : -1;
@@ -195,7 +195,7 @@ static void handle_ipc(unsigned char* msg, unsigned long long sender) {
     }
 
     case MOD_GET_TABLE : {
-        reply[0] = set_mod_table();
+        send_mod_table(sender);
         break;
     }
 
@@ -203,11 +203,22 @@ static void handle_ipc(unsigned char* msg, unsigned long long sender) {
         reply[0] = -1;
     }
 
-    mod_send(sender, reply);
+    send(sender, reply);
+}
+
+MODTABLE_FUNCTION uint64_t open(const char* path) {
+    uint64_t buf[8] = {VFS_OPEN, 0, 0, 0, 0, 0, 0, 0};
+
+    int pi = 0;
+    while (path[pi] && pi < 55) { ((char*)buf)[8 + pi] = path[pi]; pi++; }
+    ((char*)buf)[8 + pi] = '\0';
+
+    send(MY_PID, buf);
+    return -1; // TODO: Return handle
 }
 
 void init(void) {
-    return;
+    REGISTER_FUNCTION(open)
 }
 
 void loop(void) {

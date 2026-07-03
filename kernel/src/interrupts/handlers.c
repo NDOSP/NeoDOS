@@ -37,7 +37,7 @@ void pageFaultHandler(INTERRUPT_FRAME* frame) {
     if (frame->cs == 0x2B) {
         Task* t = getCurrentTask();
         serial_printf("TASK: killing task '%s' (pid=%lu) due to page fault\n", t->name, t->id);
-        killTaskAndSwitch(frame);
+        killTaskAndSwitch(frame); // TODO: Try to reboot if killed task is module
     } else {
         asm volatile("hlt");
         while (1);

@@ -12,11 +12,16 @@
 #define REGISTER_MODULE(name) \
     MODINFO(name); \
     \
-    extern void init(void); \
-    extern void loop(void); \
+    static ModTable __attribute__((section(".modtable.table"))) __modtable; \
+    static int __modtable_index = 0; \
+    \
+    void init(void); \
+    void loop(void); \
     \
     __attribute__((section(".text.start"))) \
     void _start(void) { \
+        __publish_modtable(); \
+        __modtable.pid = get_pid(); \
         debug_puts(name); \
         debug_puts(": init | modstd (v1.2)"); \
         debug_puts("\n"); \
@@ -28,14 +33,15 @@
         } \
     }
 
+#define MODTABLE_FUNCTION __attribute__((section(".modtable.function"))) 
+#define MY_PID __modtable.pid
+
 extern char __modtable_end[];
 extern char __modtable_start[];
 
 static uint64_t __modtable_shm = (uint64_t)-1;
 
-static uint64_t set_mod_table() {
-    if (__modtable_shm != (uint64_t)-1) return __modtable_shm;
-
+static void __publish_modtable() {
     void *start, *end;
     asm volatile(
         "lea __modtable_start(%%rip), %0\n"
@@ -50,7 +56,16 @@ static uint64_t set_mod_table() {
     unsigned long long shm_vaddr = shm_attach(__modtable_shm);
 
     memcpy((void*)shm_vaddr, start, modtable_bytes);
-    return __modtable_shm;
+}
+
+#define REGISTER_FUNCTION(name) \
+    __modtable.functions[__modtable_index++] = name - (uint64_t)__modtable_start;
+
+static int send_mod_table(uint64_t pid) {
+    uint64_t msg[8] = {0};
+    msg[0] = __modtable_shm;
+    send(pid, msg);
+    return 0;
 }
 
 #define MOD_PHYS_MAP   1
@@ -62,5 +77,20 @@ static uint64_t set_mod_table() {
 #define MOD_REP_OUTSW  7
 #define MOD_CHANGE_PROCESS_NAME 8
 #define MOD_UNREGISTER 9
+
+#define BOOTINFO_FB     1
+#define BOOTINFO_FONT   2
+#define BOOTINFO_MODCNT 3
+#define BOOTINFO_MOD    4
+#define BOOTINFO_FONT_SCALE 5
+
+#define BOOTINFO_ARG(type, max_size)   ((uint64_t)(type) | ((uint64_t)(max_size) << 32))
+#define BOOTINFO_ARG_IDX(type, idx, max_size) \
+    ((uint64_t)(type) | ((uint64_t)(idx) << 8) | ((uint64_t)(max_size) << 32))
+
+#define PORT_IN  0
+#define PORT_OUT 1
+#define PORT_W(port, width, dir) \
+    ((uint64_t)((port) & 0xFFFF) | (((uint64_t)(width) & 0xFF) << 16) | (((uint64_t)(dir) & 0xFF) << 24))
 
 #endif // MODSTD_H

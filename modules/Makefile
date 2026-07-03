@@ -3,7 +3,7 @@ CC := gcc
 CFLAGS := -ffreestanding -O2 -fPIC -Wall -Wextra -nostdlib -nostartfiles \
           -fno-stack-protector -mno-red-zone \
           -Iinclude -MMD -MP \
-		  -I../libs
+		  -I../libs -I.
 AS := nasm
 ASFLAGS := -f elf64
 LD := ld

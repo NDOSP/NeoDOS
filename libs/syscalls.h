@@ -48,6 +48,10 @@ static inline unsigned long long fork() {
     return syscall(SYSCALL_FORK, 0, 0, 0, 0);
 }
 
+static inline unsigned long long get_pid() {
+    return syscall(SYSCALL_GETPID, 0, 0, 0, 0);
+}
+
 static inline unsigned long long alloc(unsigned long long pages) {
     return syscall(SYSCALL_ALLOC_PAGES, pages, 0, 0, 0);
 }

@@ -10,6 +10,9 @@ SECTIONS {
 
     __modtable_start = .;
     .modtable : {
+        KEEP(*(.modtable.table))
+        KEEP(*(.modtable.function))
+        KEEP(*(.modtable.*))
         KEEP(*(.modtable))
     }
     __modtable_end = .;
