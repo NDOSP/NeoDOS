@@ -75,8 +75,7 @@ static inline unsigned long long mod_recv_from(unsigned long long pid, void* buf
 
 // ======================== Module registry ========================
 static inline int mod_list(void* entries, int max) {
-    return (int)mod_syscall(SYSCALL_MOD_LIST, (unsigned long long)entries,
-                            (unsigned long long)max, 0);
+    return list_mods(entries, max);
 }
 
 // ======================== Module-only helpers (SYSCALL_MOD) ========================

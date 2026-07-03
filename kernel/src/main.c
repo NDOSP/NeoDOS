@@ -33,6 +33,7 @@ void kmain() {
     acpiInit();
     DEBUG_INFO("initializing syscalls");
     initSyscalls(0, (void*)tss[0].rsp0 + 0x1000);
+    shm_init();
 
     DEBUG_INFO("initializing BSP LAPIC");
     lapic_init();
@@ -44,13 +45,15 @@ void kmain() {
 
     DEBUG_INFO("initializing module manager");
     modman_init();
-    shm_init();
+
+    DEBUG_INFO("launching modules");
+    launchModules();
 
     if (bInfo.initEntry) {
         size_t stack_pages = 4;
         void* stack_phys = pmmAllocator(stack_pages);
         if (stack_phys) {
-            Task* task = createUserTaskPrio((void (*)(void))(uint64_t)bInfo.initEntry, "init", PRIORITY_HIGH);
+            Task* task = createUserTaskPrio((void (*)(void))(uint64_t)bInfo.initEntry, "init", PRIORITY_NORM);
             if (task) {
                 vmm_map_in_cr3(task->cr3, (uint64_t)stack_phys, stack_pages * PAGE_SIZE,
                                (uint64_t)stack_phys, PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
@@ -61,9 +64,6 @@ void kmain() {
             }
         }
     }
-
-    DEBUG_INFO("launching modules");
-    launchModules();
 
     DEBUG_INFO("scheduler ready, enabling interrupts");
 

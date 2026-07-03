@@ -1,4 +1,4 @@
-#include "modlib.h"
+#include "../../modules/include/modlib.h"
 
 #define VID_CLEAR     4
 #define VID_PUTSTR    2

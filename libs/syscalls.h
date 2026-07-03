@@ -44,6 +44,14 @@ static inline void exit() {
     syscall(SYSCALL_EXIT, 0, 0, 0, 0);
 }
 
+static inline unsigned long long fork() {
+    return syscall(SYSCALL_FORK, 0, 0, 0, 0);
+}
+
+static inline unsigned long long alloc(unsigned long long pages) {
+    return syscall(SYSCALL_ALLOC_PAGES, pages, 0, 0, 0);
+}
+
 static inline unsigned long long send(unsigned long long pid, void* buf) {
     return syscall(SYSCALL_SEND, pid, (unsigned long long)buf, 0, 0);
 }
@@ -62,6 +70,10 @@ static inline unsigned long long shm_attach(unsigned long long handle) {
 
 static inline unsigned long long shm_detach(unsigned long long handle) {
     return syscall(SYSCALL_SHM, SHM_DETACH, handle, 0, 0);
+}
+
+static inline int list_mods(void* entries, int max) {
+    return (int)syscall(SYSCALL_MOD_LIST, (unsigned long long)entries, (unsigned long long)max, 0, 0);
 }
 
 #endif // SYSCALLS

@@ -82,7 +82,7 @@ int modman_unregister_current() {
     uint64_t pid = getCurrentPid();
     int res = modman_unregister(pid);
     if (res != 0) {
-        DEBUG_INFO("MODMAN: failed to unregister pid=%lu", pid);
+        DEBUG_WARN("MODMAN: failed to unregister pid=%lu", pid);
     }
 
     return res;

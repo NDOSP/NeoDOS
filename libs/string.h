@@ -1,16 +1,23 @@
 #ifndef STRING_H
 #define STRING_H
 
-static void toUpperCase(char str[]) {
-    int i = 0;
+#include <stdint.h>
 
-    while (str[i] != '\0') {
-        if (str[i] >= 'a' && str[i] <= 'z') {
-            str[i] = str[i] - 32;
-        }
-        
-        i++;
+static void* memcpy(void* dest, const void* src, uint32_t n) {
+    uint8_t *d = dest;
+    const uint8_t *s = src;
+    for (uint32_t i = 0; i < n; i++) {
+        d[i] = s[i];
     }
+    return dest;
+}
+
+static void* memset(void* s, int c, uint32_t n) {
+    uint8_t *p = s;
+    for (uint32_t i = 0; i < n; i++) {
+        p[i] = (uint8_t)c;
+    }
+    return s;
 }
 
 #endif // STRING_H

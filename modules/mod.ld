@@ -8,6 +8,12 @@ SECTIONS {
         KEEP(*(.modinfo))
     }
 
+    __modtable_start = .;
+    .modtable : {
+        KEEP(*(.modtable))
+    }
+    __modtable_end = .;
+
     .text : {
         *(.text.start)
         *(.text)

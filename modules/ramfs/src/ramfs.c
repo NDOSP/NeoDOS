@@ -1,7 +1,7 @@
-#include "modlib.h"
+#include "modstd.h"
 #include <stdint.h>
 
-MODINFO("ramfs");
+REGISTER_MODULE("ramfs")
 
 #define FS_OPEN   0x101
 #define FS_READ   0x102
@@ -15,9 +15,6 @@ MODINFO("ramfs");
 #define MAX_FILES    32
 #define MAX_NAME     64
 #define MAX_PAGES    16
-#define PAGE_SIZE    4096
-
-typedef struct { uint64_t pid; char name[64]; } ModEntry;
 
 typedef struct {
     int used;
@@ -29,19 +26,6 @@ typedef struct {
 
 static RamFile files[MAX_FILES];
 static uint64_t my_pid = 0;
-
-static uint64_t find_mod(const char* name) {
-    unsigned long long buf = mod_syscall(SYSCALL_ALLOC_PAGES, 2, 0, 0);
-    if (buf == 0 || buf == (unsigned long long)-1) return 0;
-    int cnt = mod_list((void*)buf, 64);
-    ModEntry* e = (ModEntry*)buf;
-    for (int i = 0; i < cnt; i++) {
-        int m = 1;
-        for (int j = 0; name[j]; j++) { if (e[i].name[j] != name[j]) { m = 0; break; } }
-        if (m && e[i].pid) return e[i].pid;
-    }
-    return 0;
-}
 
 static int find_file(const char* name) {
     for (int i = 0; i < MAX_FILES; i++)
@@ -227,9 +211,7 @@ static void handle_ipc(unsigned char* msg, unsigned long long sender) {
     mod_send(sender, reply);
 }
 
-__attribute__((section(".text.start")))
-void _start(void) {
-    debug_puts("RAMFS: init\n");
+void init(void) {
     my_pid = mod_syscall(SYSCALL_GETPID, 0, 0, 0);
 
     uint64_t vfs_pid = find_mod("vfs");
@@ -246,7 +228,9 @@ void _start(void) {
     } else {
         debug_puts("RAMFS: VFS not found\n");
     }
+}
 
+void loop(void) {
     while (1) {
         unsigned char msg[64];
         unsigned long long snd = mod_recv(msg);

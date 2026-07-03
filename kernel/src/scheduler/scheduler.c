@@ -476,7 +476,7 @@ void launchModules(void) {
         }
 
         Task* task = createUserTaskPrio((void (*)(void))((uint64_t)entry + entry_off),
-                                        bInfo.modules[i].name, PRIORITY_NORM);
+                                        bInfo.modules[i].name, PRIORITY_HIGH);
         if (task) {
             task->isModule = 1;
 

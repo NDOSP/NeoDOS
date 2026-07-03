@@ -194,6 +194,11 @@ static void handle_ipc(unsigned char* msg, unsigned long long sender) {
         break;
     }
 
+    case MOD_GET_TABLE : {
+        reply[0] = set_mod_table();
+        break;
+    }
+
     default:
         reply[0] = -1;
     }
@@ -207,7 +212,7 @@ void init(void) {
 
 void loop(void) {
     unsigned char msg[64];
-    unsigned long long snd = mod_recv(msg);
+    unsigned long long snd = recv(msg);
 
     if (snd != (unsigned long long)-1)
         handle_ipc(msg, snd);

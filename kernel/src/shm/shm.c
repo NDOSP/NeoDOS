@@ -17,7 +17,7 @@ void shm_init(void) {
     DEBUG_INFO("SHM: shared memory subsystem initialized");
 }
 
-uint64_t shm_create(uint64_t pages) {
+uint64_t shm_create(uint64_t pages) { // TODO: Add rights to shm pages (READ, WRITE, EXECUTE) for CREATOR and USERS
     if (!initialized) return -1ULL;
     if (pages == 0 || pages > 256) return -1ULL;
 

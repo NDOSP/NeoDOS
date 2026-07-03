@@ -1,8 +1,13 @@
 #ifndef MODSTD_H
 #define MODSTD_H
 
+#include "module.h"
 #include "modlib.h"
 #include "std.h"
+
+#include <stdint.h>
+
+#define PAGE_SIZE 4096
 
 #define REGISTER_MODULE(name) \
     MODINFO(name); \
@@ -13,7 +18,7 @@
     __attribute__((section(".text.start"))) \
     void _start(void) { \
         debug_puts(name); \
-        debug_puts(": init"); \
+        debug_puts(": init | modstd (v1.2)"); \
         debug_puts("\n"); \
         \
         init(); \
@@ -23,19 +28,29 @@
         } \
     }
 
-typedef struct { uint64_t pid; char name[64]; } ModEntry;
+extern char __modtable_end[];
+extern char __modtable_start[];
 
-static uint64_t find_mod(const char* name) {
-    unsigned long long buf = mod_syscall(SYSCALL_ALLOC_PAGES, 2, 0, 0);
-    if (buf == 0 || buf == (unsigned long long)-1) return 0;
-    int cnt = mod_list((void*)buf, 64);
-    ModEntry* e = (ModEntry*)buf;
-    for (int i = 0; i < cnt; i++) {
-        int m = 1;
-        for (int j = 0; name[j]; j++) { if (e[i].name[j] != name[j]) { m = 0; break; } }
-        if (m && e[i].pid) return e[i].pid;
-    }
-    return 0;
+static uint64_t __modtable_shm = (uint64_t)-1;
+
+static uint64_t set_mod_table() {
+    if (__modtable_shm != (uint64_t)-1) return __modtable_shm;
+
+    void *start, *end;
+    asm volatile(
+        "lea __modtable_start(%%rip), %0\n"
+        "lea __modtable_end(%%rip), %1"
+        : "=r"(start), "=r"(end)
+    );
+
+    uint64_t modtable_bytes = (uint64_t)(end - start);
+
+    __modtable_shm = shm_create(PAGES(modtable_bytes));
+    if (__modtable_shm == (uint64_t)-1) return (uint64_t)-1;
+    unsigned long long shm_vaddr = shm_attach(__modtable_shm);
+
+    memcpy((void*)shm_vaddr, start, modtable_bytes);
+    return __modtable_shm;
 }
 
 #define MOD_PHYS_MAP   1

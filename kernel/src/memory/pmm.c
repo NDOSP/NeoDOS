@@ -1,6 +1,7 @@
 #include "pmm.h"
 #include "bootinfo.h"
 #include "paging.h"
+#include "debug.h"
 #include <stdbool.h>
 
 static void markUsed(void* address, size_t numOfPages) {
@@ -41,6 +42,7 @@ static void* findFreeAddress(size_t numOfPages) {
         }
     }
 
+    DEBUG_INFO("OOM Free Adress");
     return NULL;
 }
 

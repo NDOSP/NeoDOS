@@ -107,9 +107,11 @@ void _start(void) {
         do { snd = mod_recv(r); } while (snd != elf_pid);
         if (r[0] == 0) {
             debug_puts("INIT: shell launched, exiting\n");
+            exit();
+            while (1) asm volatile ("pause"); // TODO: Remove this line when exit() will work
         }
     }
 
     debug_puts("INIT: exec shell failed\n");
-    exit();
+    while (1) asm volatile ("pause");
 }

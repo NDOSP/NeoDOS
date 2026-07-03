@@ -270,16 +270,11 @@ static void handle_ipc(unsigned char* msg, unsigned long long sender) {
         exec_sp = stack_top;
         debug_puts("ELF: entry="); debug_putu(entry); debug_puts(" sp="); debug_putu(stack_top); debug_puts("\n");
         debug_puts("ELF: forking\n");
-        uint64_t child_pid = mod_syscall(SYSCALL_FORK, 0, 0, 0);
+        uint64_t child_pid = fork();
         if (child_pid == 0) {
-            mod_syscall4(SYSCALL_MOD, MOD_CHANGE_PROCESS_NAME, child_pid, "last_path_part\0", 16); // TODO: Get path last part to name process
-            mod_syscall(SYSCALL_MOD, MOD_UNREGISTER, 0, 0);
+            syscall(SYSCALL_MOD, MOD_CHANGE_PROCESS_NAME, child_pid, "last_path_part\0", 16); // TODO: Get path last part to name process
+            syscall(SYSCALL_MOD, MOD_UNREGISTER, 0, 0, 0);
 
-            // Child is already in ring 3 (CS=0x2B from fork return).
-            // Set the stack pointer, zero registers, and jump to the entry.
-            // Push exec_entry onto the new stack before the xors and pop it
-            // after, because the xors clobber all GPRs (including whichever
-            // register the compiler picks for the input operand).
             asm volatile(
                 "mov %0, %%rsp;"
                 "push %1;"
