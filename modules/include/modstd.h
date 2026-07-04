@@ -22,9 +22,6 @@
     void _start(void) { \
         __publish_modtable(); \
         __modtable.pid = get_pid(); \
-        debug_puts(name); \
-        debug_puts(": init | modstd (v1.2)"); \
-        debug_puts("\n"); \
         \
         init(); \
         \
@@ -61,7 +58,7 @@ static void __publish_modtable() {
 #define REGISTER_FUNCTION(name) \
     __modtable.functions[__modtable_index++] = name - (uint64_t)__modtable_start;
 
-static int send_mod_table(uint64_t pid) {
+static inline int send_mod_table(uint64_t pid) {
     uint64_t msg[8] = {0};
     msg[0] = __modtable_shm;
     send(pid, msg);

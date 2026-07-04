@@ -70,7 +70,7 @@ static inline unsigned long long mod_recv(void* buf) {
 }
 
 static inline unsigned long long mod_recv_from(unsigned long long pid, void* buf) {
-    return mod_syscall(SYSCALL_RECV_FROM, pid, (unsigned long long)buf, 0);
+    return recv_from(pid, buf);
 }
 
 // ======================== Module registry ========================

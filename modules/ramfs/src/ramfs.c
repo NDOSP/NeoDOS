@@ -1,4 +1,5 @@
 #include "modstd.h"
+#include "vfs/vfs.h"
 #include <stdint.h>
 
 REGISTER_MODULE("ramfs")
@@ -208,20 +209,18 @@ static void handle_ipc(unsigned char* msg, unsigned long long sender) {
         reply[0] = -1;
     }
 
-    mod_send(sender, reply);
+    send(sender, reply);
 }
 
 void init(void) {
-    my_pid = mod_syscall(SYSCALL_GETPID, 0, 0, 0);
+    my_pid = get_pid();
 
-    uint64_t vfs_pid = find_mod("vfs");
-    if (vfs_pid) {
-        uint64_t m[8] = {VFS_MOUNT, 'T', my_pid};
-        uint64_t r[8];
-        mod_send(vfs_pid, m);
-        unsigned long long snd;
-        do { snd = mod_recv_from(vfs_pid, r); } while (snd != vfs_pid);
-        if (r[0] == 0)
+    VFSModTable* vfs = (VFSModTable*)get_mod_table("vfs");
+    if (vfs) {
+        debug_puts("Before MODTABLE\n");
+        uint64_t status = MODTABLE_CALL(vfs, vfs->mount, 'T', my_pid);
+        debug_puts("After MODTABLE\n");
+        if (status == 0)
             debug_puts("RAMFS: registered with VFS as T:\n");
         else
             debug_puts("RAMFS: VFS mount failed\n");

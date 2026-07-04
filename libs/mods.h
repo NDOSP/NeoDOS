@@ -40,17 +40,12 @@ static ModTable* get_mod_table(const char* name) {
     send(mod_pid, mes);
 
     uint64_t shm;
-    while(1) {
-        unsigned char msg[64];
-        unsigned long long snd = recv(msg);
+    unsigned char msg[64];
+    uint64_t snd;
+    do { snd = recv_from(mod_pid, msg); } while (snd != mod_pid);
+    shm = *(uint64_t*)(msg);
 
-        if (snd == mod_pid) {
-            shm = *(uint64_t*)msg;
-            break;
-        } else
-            asm volatile("pause");
-    }
-
+    if (shm == (uint64_t)-1) return NULL;
     return (ModTable*)(shm_attach(shm) + 16); // TODO: Remove + 16 (for now its only working with +16)
 }
 

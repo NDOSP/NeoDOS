@@ -64,6 +64,10 @@ static inline unsigned long long recv(void* buf) {
     return syscall(SYSCALL_RECV, (unsigned long long)buf, 0, 0, 0);
 }
 
+static inline unsigned long long recv_from(unsigned long long pid, void* buf) {
+    return syscall(SYSCALL_RECV_FROM, pid, (unsigned long long)buf, 0, 0);
+}
+
 static inline unsigned long long shm_create(unsigned long long pages) {
     return syscall(SYSCALL_SHM, SHM_CREATE, pages, 0, 0);
 }

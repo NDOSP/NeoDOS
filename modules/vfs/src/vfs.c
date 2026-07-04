@@ -1,4 +1,5 @@
 #include "modstd.h"
+#include "vfs/vfs.h"
 #include <stdint.h>
 
 REGISTER_MODULE("vfs");
@@ -206,7 +207,7 @@ static void handle_ipc(unsigned char* msg, unsigned long long sender) {
     send(sender, reply);
 }
 
-MODTABLE_FUNCTION uint64_t open(const char* path) {
+MODTABLE_FUNCTION FileDetail open(const char* path) {
     uint64_t buf[8] = {VFS_OPEN, 0, 0, 0, 0, 0, 0, 0};
 
     int pi = 0;
@@ -214,11 +215,49 @@ MODTABLE_FUNCTION uint64_t open(const char* path) {
     ((char*)buf)[8 + pi] = '\0';
 
     send(MY_PID, buf);
-    return -1; // TODO: Return handle
+
+    unsigned long long snd;
+    uint64_t r[8];
+    do { snd = recv_from(MY_PID, r); } while (snd != MY_PID);
+
+    FileDetail file = {.fd = r[1], .file_size = r[2]};
+    return file;
 }
 
+MODTABLE_FUNCTION FileDetail create(const char* path) {
+    uint64_t buf[8] = {VFS_CREATE, 0, 0, 0, 0, 0, 0, 0};
+
+    int pi = 0;
+    while (path[pi] && pi < 55) { ((char*)buf)[8 + pi] = path[pi]; pi++; }
+    ((char*)buf)[8 + pi] = '\0';
+
+    send(MY_PID, buf);
+
+    unsigned long long snd;
+    uint64_t r[8];
+    do { snd = recv_from(MY_PID, r); } while (snd != MY_PID);
+
+    FileDetail file = {.fd = r[1], .file_size = r[2]};
+    return file;
+}
+
+MODTABLE_FUNCTION uint64_t mount(const char letter, uint64_t pid) {
+    uint64_t buf[8] = {VFS_MOUNT, letter, pid};
+    send(MY_PID, buf);
+
+    unsigned long long snd;
+    uint64_t r[8];
+    do { snd = recv_from(MY_PID, r); } while (snd != MY_PID);
+
+    return r[0];
+}
+
+// TODO: Create more MODTABLE_FUNCTIONs
+
 void init(void) {
+    REGISTER_FUNCTION(mount)
     REGISTER_FUNCTION(open)
+    REGISTER_FUNCTION(create)
 }
 
 void loop(void) {
