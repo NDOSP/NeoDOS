@@ -217,15 +217,7 @@ void init(void) {
 
     VFSModTable* vfs = (VFSModTable*)get_mod_table("vfs");
     if (vfs) {
-        debug_puts("Before MODTABLE\n");
-        uint64_t status = MODTABLE_CALL(vfs, vfs->mount, 'T', my_pid);
-        debug_puts("After MODTABLE\n");
-        if (status == 0)
-            debug_puts("RAMFS: registered with VFS as T:\n");
-        else
-            debug_puts("RAMFS: VFS mount failed\n");
-    } else {
-        debug_puts("RAMFS: VFS not found\n");
+        MODTABLE_CALL(vfs, vfs->mount, 'T', my_pid);
     }
 }
 

@@ -193,7 +193,7 @@ static void handle_ipc(unsigned char* msg, unsigned long long sender) {
 
         if (file_size < sizeof(Elf64_Ehdr)) { err = 1; goto elf_load_cleanup; }
 
-        shm = shm_create(1);
+        shm = shm_create(1, SHM_ALL_RIGHTS);
         if (shm == (unsigned long long)-1) { err = 1; goto elf_load_cleanup; }
         unsigned long long shm_vaddr = shm_attach(shm);
         if (shm_vaddr == (unsigned long long)-1) { err = 1; goto elf_load_cleanup; }
@@ -237,7 +237,7 @@ static void handle_ipc(unsigned char* msg, unsigned long long sender) {
 
         if (file_size < sizeof(Elf64_Ehdr)) { debug_puts("ELF: file too small\n"); reply[0] = -1; goto execv_cleanup; }
 
-        shm = shm_create(1);
+        shm = shm_create(1, SHM_ALL_RIGHTS);
         if (shm == (unsigned long long)-1) { debug_puts("ELF: shm_create fail\n"); reply[0] = -1; goto execv_cleanup; }
         unsigned long long shm_vaddr = shm_attach(shm);
         if (shm_vaddr == (unsigned long long)-1) { debug_puts("ELF: shm_attach fail\n"); reply[0] = -1; goto execv_cleanup; }

@@ -19,6 +19,18 @@
 #define SHM_ATTACH  2
 #define SHM_DETACH  3
 
+#define CREATOR_READ 0b00100000
+#define CREATOR_WRITE 0b00001000
+#define CREATOR_EXECUTE 0b00000010
+#define CREATOR_ALL_RIGHTS (CREATOR_EXECUTE | CREATOR_READ | CREATOR_WRITE)
+
+#define GUEST_READ 0b00010000
+#define GUEST_WRITE 0b00000100
+#define GUEST_EXECUTE 0b00000001
+#define GUEST_ALL_RIGHTS (GUEST_EXECUTE | GUEST_READ | GUEST_WRITE)
+
+#define SHM_ALL_RIGHTS (GUEST_ALL_RIGHTS | CREATOR_ALL_RIGHTS)
+
 #define NDR_SIZE    1
 #define NDR_COPY    2
 
@@ -68,8 +80,8 @@ static inline unsigned long long recv_from(unsigned long long pid, void* buf) {
     return syscall(SYSCALL_RECV_FROM, pid, (unsigned long long)buf, 0, 0);
 }
 
-static inline unsigned long long shm_create(unsigned long long pages) {
-    return syscall(SYSCALL_SHM, SHM_CREATE, pages, 0, 0);
+static inline unsigned long long shm_create(unsigned long long pages, unsigned char rights) {
+    return syscall(SYSCALL_SHM, SHM_CREATE, pages, (unsigned long long)rights, 0);
 }
 
 static inline unsigned long long shm_attach(unsigned long long handle) {

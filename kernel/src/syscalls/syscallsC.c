@@ -129,7 +129,7 @@ uint64_t syscallDispatcher(uint64_t num, uint64_t arg1, uint64_t arg2, uint64_t 
         switch (sub) {
         case SHM_CREATE: {
             uint64_t pages = arg2;
-            return shm_create(pages);
+            return shm_create(pages, arg3);
         }
         case SHM_ATTACH: {
             uint64_t handle = arg2;

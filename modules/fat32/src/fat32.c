@@ -156,7 +156,7 @@ static int init_fs(void) {
     if (!ata_pid || !gpt_pid) { debug_puts("FAT32: mod not found\n"); return -1; }
 
     debug_puts("FAT32: shm_create\n");
-    m_shm = shm_create(2);
+    m_shm = shm_create(2, SHM_ALL_RIGHTS);
     if (m_shm == (unsigned long long)-1) { debug_puts("FAT32: shm_create fail\n"); return -1; }
     debug_puts("FAT32: shm_attach\n");
     m_vaddr = shm_attach(m_shm);

@@ -8,8 +8,8 @@ SECTIONS {
         KEEP(*(.modinfo))
     }
 
-    __modtable_start = .;
     .modtable : {
+        __modtable_start = .;
         KEEP(*(.modtable.table))
         KEEP(*(.modtable.function))
         KEEP(*(.modtable.*))

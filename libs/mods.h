@@ -46,7 +46,7 @@ static ModTable* get_mod_table(const char* name) {
     shm = *(uint64_t*)(msg);
 
     if (shm == (uint64_t)-1) return NULL;
-    return (ModTable*)(shm_attach(shm) + 16); // TODO: Remove + 16 (for now its only working with +16)
+    return (ModTable*)(shm_attach(shm));
 }
 
 #endif // MODS

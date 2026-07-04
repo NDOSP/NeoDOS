@@ -17,7 +17,7 @@ void shm_init(void) {
     DEBUG_INFO("SHM: shared memory subsystem initialized");
 }
 
-uint64_t shm_create(uint64_t pages) { // TODO: Add rights to shm pages (READ, WRITE, EXECUTE) for CREATOR and USERS
+uint64_t shm_create(uint64_t pages, uint8_t rights) {
     if (!initialized) return -1ULL;
     if (pages == 0 || pages > 256) return -1ULL;
 
@@ -45,6 +45,8 @@ uint64_t shm_create(uint64_t pages) { // TODO: Add rights to shm pages (READ, WR
     regions[slot].paddr  = paddr;
     regions[slot].pages  = pages;
     regions[slot].active = 1;
+    regions[slot].access = rights;
+    regions[slot].creator = getCurrentPid();
 
     DEBUG_INFO("SHM: created handle=%lu paddr=%lX pages=%lu", handle, paddr, pages);
     return handle;
@@ -70,8 +72,19 @@ int shm_attach(uint64_t handle, uint64_t* out_vaddr) {
     task->vaddr_next += size;
 
     if (task->cr3) {
-        vmm_map_in_cr3(task->cr3, vaddr, size, reg->paddr,
-                       PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
+        uint64_t pid = getCurrentPid();
+        int isCreator = (reg->creator == pid) ? 1 : 0;
+        uint64_t flags = PAGE_USER | PAGE_EXEC_DISABLE;
+
+        if (isCreator && reg->access & CREATOR_WRITE) flags |= PAGE_WRITE;
+        if (isCreator && reg->access & CREATOR_READ) flags |= PAGE_PRESENT;
+        if (isCreator && reg->access & CREATOR_EXECUTE) flags &= ~PAGE_EXEC_DISABLE;
+
+        if (!isCreator && reg->access & GUEST_WRITE) flags |= PAGE_WRITE;
+        if (!isCreator && reg->access & GUEST_READ) flags |= PAGE_PRESENT;
+        if (!isCreator && reg->access & GUEST_EXECUTE) flags &= ~PAGE_EXEC_DISABLE;
+
+        vmm_map_in_cr3(task->cr3, vaddr, size, reg->paddr, flags);
     } else {
         addPageRange(vaddr, size, reg->paddr, PAGE_PRESENT | PAGE_WRITE);
     }

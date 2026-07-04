@@ -88,7 +88,7 @@ static int gpt_init(void) {
     debug_putu(ata_pid);
     debug_puts("\n");
 
-    shm_handle = shm_create(1);
+    shm_handle = shm_create(1, SHM_ALL_RIGHTS);
     if (shm_handle == (unsigned long long)-1) {
         debug_puts("GPT: shm_create failed\n");
         return -1;

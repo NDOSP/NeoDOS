@@ -20,10 +20,10 @@
     \
     __attribute__((section(".text.start"))) \
     void _start(void) { \
-        __publish_modtable(); \
         __modtable.pid = get_pid(); \
         \
         init(); \
+        __publish_modtable(); \
         \
         while (1) { \
             loop(); \
@@ -38,7 +38,7 @@ extern char __modtable_start[];
 
 static uint64_t __modtable_shm = (uint64_t)-1;
 
-static void __publish_modtable() {
+static uint64_t __publish_modtable() {
     void *start, *end;
     asm volatile(
         "lea __modtable_start(%%rip), %0\n"
@@ -48,11 +48,13 @@ static void __publish_modtable() {
 
     uint64_t modtable_bytes = (uint64_t)(end - start);
 
-    __modtable_shm = shm_create(PAGES(modtable_bytes));
+    __modtable_shm = shm_create(PAGES(modtable_bytes), CREATOR_ALL_RIGHTS | GUEST_EXECUTE | GUEST_READ);
     if (__modtable_shm == (uint64_t)-1) return (uint64_t)-1;
     unsigned long long shm_vaddr = shm_attach(__modtable_shm);
 
     memcpy((void*)shm_vaddr, start, modtable_bytes);
+
+    return 0;
 }
 
 #define REGISTER_FUNCTION(name) \
