@@ -1,4 +1,4 @@
-#include "modlib.h"
+#include "modstd.h"
 #include <video.h>
 #include <stdint.h>
 #include <stddef.h>
@@ -14,7 +14,7 @@ static int font_w = 0;
 static int font_h = 0;
 static int text_scale = 0;
 
-MODINFO("video");
+REGISTER_MODULE("video");
 
 static inline uint32_t pack_color(uint8_t r, uint8_t g, uint8_t b) {
     if (fb_format == 1)
@@ -126,8 +126,7 @@ static void handle_ipc(unsigned char* buf, unsigned long long sender) {
     }
 }
 
-__attribute__((section(".text.start")))
-void _start(void) {
+void init(void) {
     FbInfo fb_info;
     unsigned long long ret = mod_syscall(SYSCALL_MOD, MOD_BOOTINFO,
         BOOTINFO_ARG(BOOTINFO_FB, sizeof(fb_info)), (unsigned long long)&fb_info);
@@ -180,13 +179,13 @@ void _start(void) {
         text_scale = 1;
 
     debug_puts("VIDEO: ready\n");
+}
 
-    while (1) {
-        unsigned char msg[64];
-        unsigned long long sender = mod_recv(msg);
-        if (sender != (unsigned long long)-1)
-            handle_ipc(msg, sender);
-        else
-            asm volatile("pause");
-    }
+void loop(void) {
+    unsigned char msg[64];
+    unsigned long long sender = mod_recv(msg);
+    if (sender != (unsigned long long)-1)
+        handle_ipc(msg, sender);
+    else
+        asm volatile("pause");
 }

@@ -1,7 +1,7 @@
-#include "modlib.h"
+#include "modstd.h"
 #include <stdint.h>
 
-MODINFO("fat32");
+REGISTER_MODULE("fat32");
 
 typedef struct { uint64_t pid; char name[64]; } ModEntry;
 
@@ -283,21 +283,21 @@ static void handle_ipc(unsigned char* msg, unsigned long long sender) {
     mod_send(sender, reply);
 }
 
-__attribute__((section(".text.start")))
-void _start(void) {
+void init(void) {
     debug_puts("FAT32: init\n");
+    my_pid = MY_PID;
     if (init_fs() != 0) {
         debug_puts("FAT32: init failed, continuing anyway\n");
-        my_pid = mod_syscall(SYSCALL_GETPID, 0, 0, 0);
     } else {
         debug_puts("FAT32: ready\n");
     }
-    while (1) {
-        unsigned char msg[64];
-        unsigned long long snd = mod_recv(msg);
-        if (snd != (unsigned long long)-1)
-            handle_ipc(msg, snd);
-        else
-            asm volatile("pause");
-    }
+}
+
+void loop(void) {
+    unsigned char msg[64];
+    unsigned long long snd = mod_recv(msg);
+    if (snd != (unsigned long long)-1)
+        handle_ipc(msg, snd);
+    else
+        asm volatile("pause");
 }

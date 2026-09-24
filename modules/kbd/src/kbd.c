@@ -1,7 +1,7 @@
 #include "modstd.h"
 #include <stdint.h>
 
-MODINFO("kbd");
+REGISTER_MODULE("kbd");
 
 #define KBD_GETCHAR  1
 
@@ -135,8 +135,7 @@ static int ps2_command(uint8_t cmd) {
     return 0;
 }
 
-__attribute__((section(".text.start")))
-void _start(void) {
+void init(void) {
     debug_puts("KBD: init\n");
 
     ps2_command(0xAD);
@@ -170,15 +169,15 @@ void _start(void) {
     } else {
         debug_puts("KBD: reset failed\n");
     }
+}
 
-    while (1) {
-        unsigned char msg[64];
-        unsigned long long snd = mod_recv(msg);
-        if (snd == (unsigned long long)-1) {
-            poll();
-            asm volatile("pause");
-        } else {
-            handle_ipc(msg, snd);
-        }
+void loop(void) {
+    unsigned char msg[64];
+    unsigned long long snd = mod_recv(msg);
+    if (snd == (unsigned long long)-1) {
+        poll();
+        asm volatile("pause");
+    } else {
+        handle_ipc(msg, snd);
     }
 }

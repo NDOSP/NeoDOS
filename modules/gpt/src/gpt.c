@@ -1,7 +1,7 @@
-#include "modlib.h"
+#include "modstd.h"
 #include <stdint.h>
 
-MODINFO("gpt");
+REGISTER_MODULE("gpt");
 
 typedef struct {
     uint64_t pid;
@@ -213,21 +213,20 @@ static void handle_ipc(unsigned char* msg, unsigned long long sender) {
     mod_send(sender, reply);
 }
 
-__attribute__((section(".text.start")))
-void _start(void) {
+void init(void) {
     debug_puts("GPT: init\n");
 
     if (gpt_init() != 0)
         debug_puts("GPT: init failed, continuing anyway\n");
     else
         debug_puts("GPT: ready\n");
+}
 
-    while (1) {
-        unsigned char msg[64];
-        unsigned long long sender = mod_recv(msg);
-        if (sender != (unsigned long long)-1)
-            handle_ipc(msg, sender);
-        else
-            asm volatile("pause");
-    }
+void loop(void) {
+    unsigned char msg[64];
+    unsigned long long sender = mod_recv(msg);
+    if (sender != (unsigned long long)-1)
+        handle_ipc(msg, sender);
+    else
+        asm volatile("pause");
 }

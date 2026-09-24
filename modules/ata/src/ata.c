@@ -1,7 +1,7 @@
-#include "modlib.h"
+#include "modstd.h"
 #include <stdint.h>
 
-MODINFO("ata_pio");
+REGISTER_MODULE("ata_pio");
 
 #define ATA_DATA      0x1F0
 #define ATA_ERROR     0x1F1
@@ -187,8 +187,7 @@ static void handle_ipc(unsigned char* msg, unsigned long long sender) {
     mod_send(sender, reply);
 }
 
-__attribute__((section(".text.start")))
-void _start(void) {
+void init(void) {
     debug_puts("ATA: init\n");
 
     buf_vaddr = mod_syscall(SYSCALL_ALLOC_PAGES, 1, 0, 0);
@@ -213,13 +212,13 @@ void _start(void) {
     }
 
     debug_puts("ATA: ready\n");
+}
 
-    while (1) {
-        unsigned char msg[64];
-        unsigned long long sender = mod_recv(msg);
-        if (sender != (unsigned long long)-1)
-            handle_ipc(msg, sender);
-        else
-            asm volatile("pause");
-    }
+void loop(void) {
+    unsigned char msg[64];
+    unsigned long long sender = mod_recv(msg);
+    if (sender != (unsigned long long)-1)
+        handle_ipc(msg, sender);
+    else
+        asm volatile("pause");
 }
